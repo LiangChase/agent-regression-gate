@@ -190,6 +190,14 @@ P0–P5 组成最小可用的本地闭环。P7 是将本地能力变成可展示
 - SUT 未启动、响应超时、协议异常、trace 尚未生成能得到不同且可理解的错误。
 - 一个 case 的 thread 不会意外复用到另一个 case。
 
+## P2 实施记录（2026-11-08）
+
+已实现 `SutAdapter` Protocol、ChatKit HTTP/SSE adapter、会话和快照数据对象、request ID、SUT lifecycle（external/process/compose）以及 `gate doctor`。Adapter 解析 ChatKit SSE 完成状态，通过 bootstrap 建立 thread，通过 state API 读取 AgentEvent/guardrail/context；未知事件类型和额外字段会保留给 P3，workflow/reasoning 文本不会被 adapter 保存。对话请求不自动重试。
+
+**核验结果：** `gate doctor` 通过配置启动本地后端、等待 `/health` 返回 200 并清理进程；实际 ChatKit 查询完成，状态快照与 session thread 匹配，轨迹含 `handoff → flight_status_tool → tool_output → message → context_update`，工具参数为 `FLT-123`。本地协议模拟还验证了未知事件保留、session 关闭后拒绝继续调用、无 assistant 完成事件时标记 `trace_incomplete` 和请求关联 ID。SUT 不可达时 `doctor` 返回退出码 3 和 `sut_unavailable`。
+
+**边界记录：** 当前 SUT 没有 thread 删除接口，`close_session` 仅关闭 Gate 侧句柄；服务内存中的 thread 仍保留至 SUT 进程结束。`process` 模式只管理直接子进程；需要清理进程树/多服务时使用 `compose`。P3 仍需负责将输入、turn 边界和 snapshot 持久化并做隐私脱敏。
+
 ### P3 — Trace 采集、规范化与持久化（8–10 小时）
 
 **目标：** 将 SUT 原始事件变成可审查、可比较、可长期保存的执行证据。

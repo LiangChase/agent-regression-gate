@@ -13,14 +13,15 @@ python -m pip install -e .
 Copy-Item config/gate.example.yaml config/gate.yaml
 gate --help
 gate config-check
+gate --config config/gate.example.yaml doctor
 ```
 
-`config/gate.yaml` is intentionally ignored by Git. Keep credentials in environment variables or CI secrets; never add them to YAML, cases, traces, or reports.
+`config/gate.yaml` is intentionally ignored by Git. Relative paths in it are resolved from the current working directory. Keep credentials in environment variables or CI secrets; never add them to YAML, cases, traces, or reports.
 
 ## Configuration precedence
 
 Built-in defaults are overridden by the YAML file, then `GATE_*` environment variables, then command-line overrides. The default config path is `config/gate.yaml`; set `GATE_CONFIG` or pass `--config` to use another file.
 
-P1 implements the package, configuration validation, safe effective-config display, and core data/error/logging models. SUT adapters, case execution, evaluators, and report generation are subsequent phases and are not represented as implemented commands yet.
+P1 provides the package, configuration validation, safe effective-config display, and core data/error/logging models. P2 adds the SUT diagnostic and ChatKit adapter. Case execution, evaluators, and report generation are subsequent phases and are not represented as implemented commands yet.
 
 See [the phase plan](agent-regression-gate-phase-plan.md), [architecture outline](docs/architecture.md), and [SUT contract](docs/sut-contract.md).

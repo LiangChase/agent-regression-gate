@@ -4,6 +4,11 @@ sut:
   start_mode: external # external | process | compose (lifecycle is implemented in P2)
   health_path: /health
   request_timeout_seconds: 60
+  launch_command: [] # required for process/compose modes; args are passed without a shell
+  shutdown_command: [] # required for compose mode; optional for process mode
+  working_directory: null
+  startup_timeout_seconds: 60
+  shutdown_timeout_seconds: 10
 
 run:
   cases_path: cases/airline

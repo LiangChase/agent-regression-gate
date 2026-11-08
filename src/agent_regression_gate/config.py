@@ -55,6 +55,11 @@ class SutConfig:
     start_mode: str = "external"
     health_path: str = "/health"
     request_timeout_seconds: float = 60.0
+    launch_command: list[str] = field(default_factory=list)
+    shutdown_command: list[str] = field(default_factory=list)
+    working_directory: Path | None = None
+    startup_timeout_seconds: float = 60.0
+    shutdown_timeout_seconds: float = 10.0
 
 
 @dataclass(slots=True)
@@ -90,11 +95,18 @@ class GateConfig:
         value["config_path"] = str(self.config_path) if self.config_path else None
         value["run"] = {key: str(item) for key, item in value["run"].items()}
         value["sut"]["base_url"] = safe_url(self.sut.base_url)
+        value["sut"]["working_directory"] = (
+            str(self.sut.working_directory) if self.sut.working_directory else None
+        )
         return value
 
 
 _ALLOWED_KEYS = {
-    "sut": {"base_url", "start_mode", "health_path", "request_timeout_seconds"},
+    "sut": {
+        "base_url", "start_mode", "health_path", "request_timeout_seconds",
+        "launch_command", "shutdown_command", "working_directory",
+        "startup_timeout_seconds", "shutdown_timeout_seconds",
+    },
     "run": {"cases_path", "reports_dir", "baselines_dir"},
     "model": {"execution_mode", "provider"},
     "logging": {"level", "format"},
@@ -105,6 +117,8 @@ _ENV_KEYS = {
     "GATE_SUT_START_MODE": ("sut", "start_mode"),
     "GATE_SUT_HEALTH_PATH": ("sut", "health_path"),
     "GATE_REQUEST_TIMEOUT_SECONDS": ("sut", "request_timeout_seconds"),
+    "GATE_STARTUP_TIMEOUT_SECONDS": ("sut", "startup_timeout_seconds"),
+    "GATE_SHUTDOWN_TIMEOUT_SECONDS": ("sut", "shutdown_timeout_seconds"),
     "GATE_CASES_PATH": ("run", "cases_path"),
     "GATE_REPORTS_DIR": ("run", "reports_dir"),
     "GATE_BASELINES_DIR": ("run", "baselines_dir"),
@@ -154,14 +168,26 @@ def _validate_yaml_shape(raw: Any, path: Path) -> dict[str, dict[str, Any]]:
 
 
 def _coerce(section: str, key: str, value: Any) -> Any:
-    if section == "sut" and key == "request_timeout_seconds":
+    if section == "sut" and key in {
+        "request_timeout_seconds", "startup_timeout_seconds", "shutdown_timeout_seconds"
+    }:
         try:
             result = float(value)
         except (TypeError, ValueError) as exc:
-            raise ConfigurationError("GATE_REQUEST_TIMEOUT_SECONDS must be a number.") from exc
+            raise ConfigurationError(f"sut.{key} must be a number.") from exc
         if not math.isfinite(result) or result <= 0:
-            raise ConfigurationError("SUT request timeout must be greater than zero.")
+            raise ConfigurationError(f"sut.{key} must be greater than zero.")
         return result
+    if section == "sut" and key in {"launch_command", "shutdown_command"}:
+        if not isinstance(value, list) or any(not isinstance(part, str) or not part for part in value):
+            raise ConfigurationError(f"sut.{key} must be a list of non-empty command arguments.")
+        return [part.strip() for part in value]
+    if section == "sut" and key == "working_directory":
+        if value in (None, ""):
+            return None
+        if not isinstance(value, str):
+            raise ConfigurationError("sut.working_directory must be a path string or null.")
+        return Path(value)
     if section == "run" and key in {"cases_path", "reports_dir", "baselines_dir"}:
         return Path(value)
     if not isinstance(value, str):
@@ -177,6 +203,7 @@ def load_config(
     env: Mapping[str, str] | None = None,
     cli_overrides: Mapping[str, Mapping[str, Any]] | None = None,
     require_config_file: bool = True,
+    require_model_credentials: bool = True,
 ) -> GateConfig:
     """Load, layer, and validate configuration without retaining secret values."""
     environment = os.environ if env is None else env
@@ -233,14 +260,25 @@ def load_config(
         logging=LoggingConfig(**typed["logging"]),
         config_path=path.resolve() if path.is_file() else path,
     )
-    validate_config(result, environment)
+    validate_config(result, environment, require_model_credentials=require_model_credentials)
     return result
 
 
-def validate_config(config: GateConfig, env: Mapping[str, str] | None = None) -> None:
+def validate_config(
+    config: GateConfig,
+    env: Mapping[str, str] | None = None,
+    *,
+    require_model_credentials: bool = True,
+) -> None:
     environment = os.environ if env is None else env
     if config.sut.start_mode not in {"external", "process", "compose"}:
         raise ConfigurationError("sut.start_mode must be external, process, or compose.")
+    if config.sut.start_mode in {"process", "compose"} and not config.sut.launch_command:
+        raise ConfigurationError(f"sut.launch_command is required when start_mode is {config.sut.start_mode}.")
+    if config.sut.start_mode == "compose" and not config.sut.shutdown_command:
+        raise ConfigurationError("sut.shutdown_command is required when start_mode is compose.")
+    if config.sut.working_directory and not config.sut.working_directory.is_dir():
+        raise ConfigurationError("sut.working_directory must point to an existing directory.")
     if not config.sut.health_path.startswith("/"):
         raise ConfigurationError("sut.health_path must start with '/'.")
     if not safe_url(config.sut.base_url).startswith(("http://", "https://")):
@@ -254,7 +292,7 @@ def validate_config(config: GateConfig, env: Mapping[str, str] | None = None) ->
     if config.logging.format not in {"json", "text"}:
         raise ConfigurationError("logging.format must be json or text.")
 
-    if config.model.execution_mode == "live":
+    if require_model_credentials and config.model.execution_mode == "live":
         required_key = "DEEPSEEK_API_KEY" if config.model.provider == "deepseek" else "OPENAI_API_KEY"
         if not environment.get(required_key):
             raise ConfigurationError(

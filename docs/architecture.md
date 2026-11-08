@@ -23,7 +23,7 @@ cases ──> execution runner ──> SUT adapter ──> business Agent
 | `config.py` | Layered config loading and validation | P1 |
 | `models.py`, `errors.py` | Transport-neutral result models and stable error categories | P1 |
 | `logging_config.py` | Correlation-aware structured logs and defensive redaction | P1 |
-| `sut/` | Protocol adapters and SUT lifecycle | P2 |
+| `sut/` | ChatKit HTTP/SSE adapter, session boundary, and SUT lifecycle | P2 implemented |
 | `tracing/` | Trace normalization, completeness, persistence, redaction | P3 |
 | `cases/` | Case schemas, loading, static validation | P4 |
 | `evaluators/` | Deterministic assertions and optional semantic evaluation | P4/P6 |
