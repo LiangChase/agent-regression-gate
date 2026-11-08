@@ -1,9 +1,18 @@
 from __future__ import annotations as _annotations
 
+import os
 import random
 import string
 
-from agents import Agent, RunContextWrapper, handoff
+from agents import (
+    Agent,
+    RunContextWrapper,
+    handoff,
+    set_default_openai_api,
+    set_default_openai_client,
+    set_tracing_disabled,
+)
+from openai import AsyncOpenAI
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 
 from .context import AirlineAgentChatContext
@@ -22,7 +31,20 @@ from .tools import (
     update_seat,
 )
 
-MODEL = "gpt-5.2"
+MODEL = os.getenv("LLM_MODEL", "gpt-5.2")
+if os.getenv("LLM_PROVIDER", "openai").lower() == "deepseek":
+    deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
+    if not deepseek_api_key:
+        raise RuntimeError("LLM_PROVIDER=deepseek requires DEEPSEEK_API_KEY")
+    set_default_openai_client(
+        AsyncOpenAI(
+            api_key=deepseek_api_key,
+            base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+        )
+    )
+    set_default_openai_api("chat_completions")
+    set_tracing_disabled(True)
+    MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-flash")
 
 
 def seat_services_instructions(

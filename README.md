@@ -34,6 +34,18 @@ from dotenv import load_dotenv
 load_dotenv()
 ```
 
+### Use DeepSeek instead of OpenAI
+
+The backend supports DeepSeek through its OpenAI-compatible Chat Completions API. In PowerShell, set the provider and key before starting the backend:
+
+```powershell
+$env:LLM_PROVIDER = "deepseek"
+$env:DEEPSEEK_API_KEY = "your-deepseek-api-key"
+# Optional; defaults to deepseek-flash
+$env:DEEPSEEK_MODEL = "deepseek-flash"
+```
+
+Then start the backend as described below. The OpenAI Agents SDK will use DeepSeek for all agents; do not set `OPENAI_API_KEY` for this configuration. Keep API keys in environment variables and never commit them.
 ### Install dependencies
 
 Install the dependencies for the backend by running the following commands:
