@@ -26,6 +26,7 @@ _EVENT_TYPE_MAP = {
     "error": "error",
     "context_update": "context_update",
 }
+_TOOL_ALLOWLIST_MARKER = "gate_tool_allowlisted_for_agent"
 
 
 def normalize_trace(
@@ -59,6 +60,7 @@ def normalize_trace(
     previous_event_signatures: list[str] = []
     seen_event_ids: set[str] = set()
     tool_names = _tool_names(captures)
+    tool_catalog = _tool_catalog(captures)
     turn_is_complete = bool(captures)
 
     for turn_index, capture in enumerate(captures, start=1):
@@ -113,7 +115,7 @@ def normalize_trace(
                 continue
             if observed.event_id:
                 seen_event_ids.add(observed.event_id)
-            events.append(_normalize_event(observed, len(events) + 1, turn_index, tool_names, notes))
+            events.append(_normalize_event(observed, len(events) + 1, turn_index, tool_names, tool_catalog, notes))
 
         for guardrail in snapshot.guardrails:
             guardrail_id = guardrail.get("id")
@@ -215,7 +217,14 @@ def normalize_trace(
     return TraceBundle(trace=trace, raw_snapshots=raw_snapshots)
 
 
-def _normalize_event(observed: Any, sequence: int, turn_index: int, tool_names: set[str], notes: list[str]) -> TraceEvent:
+def _normalize_event(
+    observed: Any,
+    sequence: int,
+    turn_index: int,
+    tool_names: set[str],
+    tool_catalog: dict[str, set[str]],
+    notes: list[str],
+) -> TraceEvent:
     source_type = observed.event_type
     metadata = dict(observed.metadata)
     event_type = _EVENT_TYPE_MAP.get(source_type, "unknown")
@@ -225,8 +234,11 @@ def _normalize_event(observed: Any, sequence: int, turn_index: int, tool_names: 
         if not has_arguments and name not in tool_names:
             event_type = "handoff_callback"
             metadata["classification"] = "handoff_callback"
-        elif name not in tool_names:
-            notes.append(f"event_{sequence}:tool_not_in_agent_catalog:{name or 'unknown'}")
+        else:
+            allowed_tools = tool_catalog.get(observed.agent or "")
+            metadata[_TOOL_ALLOWLIST_MARKER] = bool(allowed_tools is not None and name in allowed_tools)
+            if not metadata[_TOOL_ALLOWLIST_MARKER]:
+                notes.append(f"event_{sequence}:tool_not_in_agent_catalog:{name or 'unknown'}")
     if event_type == "unknown":
         metadata["original_event_type"] = source_type
     source_id = observed.event_id if isinstance(observed.event_id, str) else None
@@ -255,6 +267,17 @@ def _tool_names(captures: Sequence[TurnCapture]) -> set[str]:
             if isinstance(tools, list):
                 names.update(item for item in tools if isinstance(item, str))
     return names
+
+
+def _tool_catalog(captures: Sequence[TurnCapture]) -> dict[str, set[str]]:
+    catalog: dict[str, set[str]] = {}
+    for capture in captures:
+        for agent in capture.snapshot.agents:
+            name = agent.get("name")
+            tools = agent.get("tools", [])
+            if isinstance(name, str) and isinstance(tools, list):
+                catalog.setdefault(name, set()).update(item for item in tools if isinstance(item, str))
+    return catalog
 
 
 def _event_signature(event: Any) -> str:
