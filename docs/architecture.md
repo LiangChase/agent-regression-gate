@@ -5,6 +5,10 @@
 Agent Regression Gate is a test and release-quality tool. The business Agent remains the SUT. Gate owns cases, run correlation, SUT adapters, trace normalization, evaluators, comparison, gate decisions, and reports.
 
 ```text
+web console (P9; planned)
+          │
+       Gate API (P9; planned)
+          │
 cases ──> execution runner ──> SUT adapter ──> business Agent
                  │                              │
                  └──── case input + trace <─────┘
@@ -15,6 +19,8 @@ cases ──> execution runner ──> SUT adapter ──> business Agent
                               │
                             CI check
 ```
+
+The CLI and CI invoke the same core directly. The future Web console will use the Gate API; it will not call the SUT directly or implement a second evaluator path.
 
 ## Package responsibilities
 
@@ -32,4 +38,4 @@ cases ──> execution runner ──> SUT adapter ──> business Agent
 | `reporting/` | JSON and Markdown report generation | P5 |
 | `cli.py` | Stable command line boundary | P1 onward |
 
-The P1 repository currently implements configuration checking and the foundation modules. Later-phase package directories are intentionally boundaries, not claims that adapters or evaluators already work.
+P1 configuration/foundation modules and P2 SUT adapter/lifecycle are implemented. Trace persistence, case execution, evaluators, reports, and the Web/API product surface remain planned work.

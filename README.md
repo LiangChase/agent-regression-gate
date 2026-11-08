@@ -22,6 +22,6 @@ gate --config config/gate.example.yaml doctor
 
 Built-in defaults are overridden by the YAML file, then `GATE_*` environment variables, then command-line overrides. The default config path is `config/gate.yaml`; set `GATE_CONFIG` or pass `--config` to use another file.
 
-P1 provides the package, configuration validation, safe effective-config display, and core data/error/logging models. P2 adds the SUT diagnostic and ChatKit adapter. Case execution, evaluators, and report generation are subsequent phases and are not represented as implemented commands yet.
+P1 provides the package, configuration validation, safe effective-config display, and core data/error/logging models. P2 adds the SUT diagnostic and ChatKit adapter. Case execution, evaluators, and report generation are subsequent phases and are not represented as implemented commands yet. A browser-based product console is planned after the CLI/CI evaluation flow stabilizes; it is not implemented yet.
 
 See [the phase plan](agent-regression-gate-phase-plan.md), [architecture outline](docs/architecture.md), and [SUT contract](docs/sut-contract.md).
