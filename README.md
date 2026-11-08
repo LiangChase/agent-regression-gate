@@ -6,6 +6,8 @@
 
 This repository contains a demo of a Customer Service interface built on top of the [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/).
 
+The UI now defaults to Simplified Chinese and includes an English/Chinese interface switch. Customer-facing agent replies default to Simplified Chinese; tool names, flight numbers, and internal trace fields remain unchanged.
+
 It is composed of two parts:
 
 1. A python backend that handles the agent orchestration logic, implementing the Agents SDK [customer service example](https://github.com/openai/openai-agents-python/tree/main/examples/customer_service)
@@ -46,6 +48,16 @@ $env:DEEPSEEK_MODEL = "deepseek-flash"
 ```
 
 Then start the backend as described below. The OpenAI Agents SDK will use DeepSeek for all agents; do not set `OPENAI_API_KEY` for this configuration. Keep API keys in environment variables and never commit them.
+
+### Chinese UI and agent replies
+
+The ChatKit interface locale defaults to `zh-CN`; the language button in the agent panel switches the UI locale and remembers the selection in browser storage. The backend appends a customer-response language instruction to each agent. It defaults to Simplified Chinese. Set this before starting the backend to change the response language:
+
+```powershell
+$env:AGENT_RESPONSE_LANGUAGE = "zh-CN" # or "en"
+```
+
+The interface language switch only changes UI labels and ChatKit controls. The agent response language is controlled by `AGENT_RESPONSE_LANGUAGE` and takes effect after restarting the backend. Agent names in the UI are translated for display only; the SUT protocol names and trace data stay in English for compatibility with tools and evaluators.
 ### Install dependencies
 
 Install the dependencies for the backend by running the following commands:

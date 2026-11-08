@@ -12,13 +12,15 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { PanelSection } from "./panel-section";
+import { localizeAgentName, localizeContextKey, localizeEventText, localizeEventType, localizeToolText, useLocale } from "@/lib/i18n";
+import type { MessageKey } from "@/lib/i18n";
 
 interface RunnerOutputProps {
   runnerEvents: AgentEvent[];
 }
 
-function formatEventName(type: string) {
-  return (type.charAt(0).toUpperCase() + type.slice(1)).replace(/_/g, " ");
+function formatEventName(type: string, locale: "zh-CN" | "en", t: (key: MessageKey) => string) {
+  return localizeEventType(type, locale, t);
 }
 
 function EventIcon({ type, icon }: { type: string; icon?: string }) {
@@ -86,25 +88,25 @@ function groupRunnerEvents(events: AgentEvent[]) {
   return groups;
 }
 
-function buildEventText(event: AgentEvent) {
+function buildEventText(event: AgentEvent, locale: "zh-CN" | "en", t: (key: MessageKey) => string) {
   switch (event.type) {
     case "handoff":
-      return event.content || `${event.metadata?.source_agent ?? ""} -> ${event.metadata?.target_agent ?? ""}`.trim();
+      return localizeEventText(event.content || `${event.metadata?.source_agent ?? ""} -> ${event.metadata?.target_agent ?? ""}`.trim(), locale);
     case "tool_call": {
       const args = event.metadata?.tool_args;
       const argsText = args !== undefined ? ` - ${inlineValue(args)}` : "";
-      return `${event.content || "Tool call"}${argsText}`;
+      return `${event.content || t("toolCall")}${argsText}`;
     }
     case "tool_output": {
       const result = event.metadata?.tool_result;
-      if (result !== undefined) return inlineValue(result);
-      return event.content || "Tool output";
+      if (result !== undefined) return localizeToolText(inlineValue(result), locale);
+      return localizeToolText(localizeEventText(event.content || t("toolOutput"), locale), locale);
     }
     case "context_update": {
       const changes = event.metadata?.changes;
       if (!changes) return event.content || "";
       return Object.entries(changes)
-        .map(([key, value]) => `${key}: ${inlineValue(value)}`)
+        .map(([key, value]) => `${localizeContextKey(key, locale)}: ${inlineValue(value)}`)
         .join(" · ");
     }
     default:
@@ -113,6 +115,7 @@ function buildEventText(event: AgentEvent) {
 }
 
 function EventDetails({ event }: { event: AgentEvent }) {
+  const { locale, t } = useLocale();
   const [expanded, setExpanded] = useState(false);
   const toolArgs = event.metadata?.tool_args;
   const toolResult = event.metadata?.tool_result;
@@ -132,8 +135,8 @@ function EventDetails({ event }: { event: AgentEvent }) {
     event.type === "tool_call"
       ? null
       : event.type === "tool_output" && collapsedResultText
-        ? collapsedResultText
-        : buildEventText(event);
+        ? isJsonResult ? collapsedResultText : localizeToolText(collapsedResultText, locale)
+        : buildEventText(event, locale, t);
   const clampStyle = !expanded
     ? { display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical" as const }
     : undefined;
@@ -142,7 +145,7 @@ function EventDetails({ event }: { event: AgentEvent }) {
     <div className="flex items-start gap-2">
       <div className="flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-[11px] text-gray-600 shrink-0">
         <EventIcon type={event.type} icon={event.metadata?.icon} />
-        <span className="whitespace-nowrap">{formatEventName(event.type)}</span>
+        <span className="whitespace-nowrap">{formatEventName(event.type, locale, t)}</span>
       </div>
       <div className="flex-1 min-w-0">
         <button
@@ -163,7 +166,7 @@ function EventDetails({ event }: { event: AgentEvent }) {
               {event.type === "tool_call" ? (
                 <>
                   <span className="font-mono text-[13px] text-gray-800">
-                    {event.content || "Tool call"}
+                    {event.content || t("toolCall")}
                   </span>
                   {collapsedArgsText && !expanded && (
                     <span className="font-mono text-[13px] text-gray-700">
@@ -182,7 +185,7 @@ function EventDetails({ event }: { event: AgentEvent }) {
               ) : event.type === "context_update" && contextChanges ? (
                 Object.entries(contextChanges).map(([key, value]) => (
                   <span key={key} className="font-mono text-[12px] text-gray-800">
-                    {key}: {inlineValue(value)}
+                    {localizeContextKey(key, locale)}: {inlineValue(value)}
                   </span>
                 ))
               ) : (
@@ -207,7 +210,7 @@ function EventDetails({ event }: { event: AgentEvent }) {
               {JSON.stringify(parsedResult, null, 2)}
             </pre>
           ) : (
-            <div className="mt-2 text-sm text-gray-800 whitespace-pre-wrap">{inlineValue(toolResult)}</div>
+            <div className="mt-2 text-sm text-gray-800 whitespace-pre-wrap">{localizeToolText(inlineValue(toolResult), locale)}</div>
           )
         )}
         {expanded && event.type === "context_update" && contextChanges && (
@@ -221,23 +224,24 @@ function EventDetails({ event }: { event: AgentEvent }) {
 }
 
 export function RunnerOutput({ runnerEvents }: RunnerOutputProps) {
+  const { locale, t } = useLocale();
   const groupedEvents = groupRunnerEvents(runnerEvents);
 
   return (
     <div className="flex-1 overflow-hidden">
       <PanelSection
-        title="Runner Output"
+        title={t("runnerOutput")}
         icon={<MessageSquareMore className="h-4 w-4 text-blue-600" />}
       >
         <ScrollArea className="h-[calc(100%-2rem)] rounded-md border border-gray-200 bg-gray-100 shadow-sm">
           <div className="p-3 space-y-2.5">
             {runnerEvents.length === 0 ? (
               <p className="text-center text-zinc-500 p-4">
-                No runner events yet
+                {t("noRunnerEvents")}
               </p>
             ) : (
               groupedEvents.map((group) => {
-                const agentName = group[0]?.agent ?? "Agent";
+                const agentName = localizeAgentName(group[0]?.agent ?? t("agent"), locale);
                 const key = group.map((ev) => ev.id).join("-");
                 return (
                   <Card

@@ -47,6 +47,34 @@ if os.getenv("LLM_PROVIDER", "openai").lower() == "deepseek":
     MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-flash")
 
 
+def _with_response_language(instructions):
+    """Add a configurable customer-facing language without translating tool contracts."""
+    language = os.getenv("AGENT_RESPONSE_LANGUAGE", "zh-CN").strip()
+    language_lower = language.lower()
+    if language_lower in {"zh", "zh-cn", "zh-hans", "zh-hans-cn"}:
+        directive = (
+            "\n\nCustomer-facing language requirement: Reply to the customer in Simplified Chinese. "
+            "Translate information from tools into natural Chinese. Preserve flight numbers, "
+            "confirmation IDs, proper names, and literal user-provided values. Tool names and "
+            "tool arguments are internal contracts and must remain unchanged."
+        )
+    elif language_lower in {"en", "en-us", "en-gb"}:
+        directive = (
+            "\n\nCustomer-facing language requirement: Reply to the customer in English. "
+            "Preserve flight numbers, confirmation IDs, proper names, and literal user-provided values."
+        )
+    else:
+        directive = (
+            f"\n\nCustomer-facing language requirement: Reply to the customer in {language}. "
+            "Preserve flight numbers, confirmation IDs, proper names, and literal user-provided values."
+        )
+    if callable(instructions):
+        def configured_instructions(context, agent):
+            return instructions(context, agent) + directive
+        return configured_instructions
+    return instructions + directive
+
+
 def seat_services_instructions(
     run_context: RunContextWrapper[AirlineAgentChatContext], agent: Agent[AirlineAgentChatContext]
 ) -> str:
@@ -72,7 +100,7 @@ seat_special_services_agent = Agent[AirlineAgentChatContext](
     name="Seat and Special Services Agent",
     model=MODEL,
     handoff_description="Updates seats and handles medical or special service seating.",
-    instructions=seat_services_instructions,
+    instructions=_with_response_language(seat_services_instructions),
     tools=[update_seat, assign_special_service_seat, display_seat_map],
     input_guardrails=[relevance_guardrail, jailbreak_guardrail],
 )
@@ -100,7 +128,7 @@ flight_information_agent = Agent[AirlineAgentChatContext](
     name="Flight Information Agent",
     model=MODEL,
     handoff_description="Provides flight status, connection impact, and alternate options.",
-    instructions=flight_information_instructions,
+    instructions=_with_response_language(flight_information_instructions),
     tools=[flight_status_tool, get_matching_flights],
     input_guardrails=[relevance_guardrail, jailbreak_guardrail],
 )
@@ -129,7 +157,7 @@ booking_cancellation_agent = Agent[AirlineAgentChatContext](
     name="Booking and Cancellation Agent",
     model=MODEL,
     handoff_description="Handles new bookings, rebookings after delays, and cancellations.",
-    instructions=booking_cancellation_instructions,
+    instructions=_with_response_language(booking_cancellation_instructions),
     tools=[cancel_flight, get_matching_flights, book_new_flight],
     input_guardrails=[relevance_guardrail, jailbreak_guardrail],
 )
@@ -156,7 +184,7 @@ refunds_compensation_agent = Agent[AirlineAgentChatContext](
     name="Refunds and Compensation Agent",
     model=MODEL,
     handoff_description="Opens compensation cases and issues hotel/meal support after delays.",
-    instructions=refunds_compensation_instructions,
+    instructions=_with_response_language(refunds_compensation_instructions),
     tools=[issue_compensation, faq_lookup_tool],
     input_guardrails=[relevance_guardrail, jailbreak_guardrail],
 )
@@ -166,12 +194,12 @@ faq_agent = Agent[AirlineAgentChatContext](
     name="FAQ Agent",
     model=MODEL,
     handoff_description="Answers common questions about policies, baggage, seats, and compensation.",
-    instructions=f"""{RECOMMENDED_PROMPT_PREFIX}
+    instructions=_with_response_language(f"""{RECOMMENDED_PROMPT_PREFIX}
     You are an FAQ agent. If you are speaking to a customer, you probably were transferred from the triage agent.
     Use the following routine to support the customer.
     1. Identify the last question asked by the customer.
     2. Use the faq_lookup_tool to get the answer. Do not rely on your own knowledge.
-    3. Respond to the customer with the answer and, if compensation or baggage is needed, offer to transfer to the right agent.""",
+    3. Respond to the customer with the answer and, if compensation or baggage is needed, offer to transfer to the right agent."""),
     tools=[faq_lookup_tool],
     input_guardrails=[relevance_guardrail, jailbreak_guardrail],
 )
@@ -181,7 +209,7 @@ triage_agent = Agent[AirlineAgentChatContext](
     name="Triage Agent",
     model=MODEL,
     handoff_description="Delegates requests to the right specialist agent (flight info, booking, seats, FAQ, baggage, compensation).",
-    instructions=(
+    instructions=_with_response_language((
         f"{RECOMMENDED_PROMPT_PREFIX} "
         "You are a helpful triaging agent. Route the customer to the best agent: "
         "Flight Information for status/alternates, Booking and Cancellation for booking changes, Seat and Special Services for seating needs, "
@@ -189,7 +217,7 @@ triage_agent = Agent[AirlineAgentChatContext](
         "First, if the message mentions Paris/New York/Austin and context is missing, call get_trip_details to populate flight/confirmation."
         "If the request is clear, hand off immediately and let the specialist complete multi-step work without asking the user to confirm after each tool call."
         "Never emit more than one handoff per message: do your prep (at most one tool call) and then hand off once."
-    ),
+    )),
     tools=[get_trip_details],
     handoffs=[],
     input_guardrails=[relevance_guardrail, jailbreak_guardrail],

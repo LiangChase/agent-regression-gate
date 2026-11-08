@@ -2,6 +2,7 @@
 
 import { ChatKit, useChatKit } from "@openai/chatkit-react";
 import React from "react";
+import { useLocale } from "@/lib/i18n";
 
 type ChatKitPanelProps = {
   initialThreadId?: string | null;
@@ -23,13 +24,15 @@ export function ChatKitPanel({
   onRunnerEventDelta,
   onRunnerBindThread,
 }: ChatKitPanelProps) {
+  const { locale, t } = useLocale();
   const chatkit = useChatKit({
     api: {
       url: "/chatkit",
       domainKey: CHATKIT_DOMAIN_KEY,
     },
+    locale,
     composer: {
-      placeholder: "Message...",
+      placeholder: t("messagePlaceholder"),
     },
     history: {
       enabled: false,
@@ -47,17 +50,16 @@ export function ChatKitPanel({
     },
     initialThread: initialThreadId ?? null,
     startScreen: {
-      greeting: "Hi! I'm your airline assistant. How can I help today?",
+      greeting: t("greeting"),
       prompts: [
-        { label: "Change my seat", prompt: "Can you move me to seat 14C?" },
+        { label: t("promptSeatLabel"), prompt: t("promptSeat") },
         {
-          label: "Flight status",
-          prompt: "What's the status of flight FLT-123?",
+          label: t("promptFlightLabel"),
+          prompt: t("promptFlight"),
         },
         {
-          label: "Missed connection",
-          prompt:
-            "My flight from Paris to New York was delayed and I missed my connection to Austin. Also, my checked bag is missing and I need to spend the night in New York. Can you help me?",
+          label: t("promptDisruptionLabel"),
+          prompt: t("promptDisruption"),
         },
       ],
     },
@@ -89,7 +91,7 @@ export function ChatKitPanel({
     <div className="flex flex-col h-full flex-1 bg-white shadow-sm border border-gray-200 border-t-0 rounded-xl">
       <div className="bg-blue-600 text-white h-12 px-4 flex items-center rounded-t-xl">
         <h2 className="font-semibold text-sm sm:text-base lg:text-lg">
-          Customer View
+          {t("customerView")}
         </h2>
       </div>
       <div className="flex-1 overflow-hidden pb-1.5">

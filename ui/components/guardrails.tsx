@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Shield, CheckCircle, XCircle } from "lucide-react";
 import { PanelSection } from "./panel-section";
 import type { GuardrailCheck } from "@/lib/types";
+import { localizeGuardrailName, useLocale } from "@/lib/i18n";
 
 interface GuardrailsProps {
   guardrails: GuardrailCheck[];
@@ -12,19 +13,19 @@ interface GuardrailsProps {
 }
 
 export function Guardrails({ guardrails, inputGuardrails }: GuardrailsProps) {
+  const { locale, t } = useLocale();
   const guardrailNameMap: Record<string, string> = {
     relevance_guardrail: "Relevance Guardrail",
     jailbreak_guardrail: "Jailbreak Guardrail",
   };
 
   const guardrailDescriptionMap: Record<string, string> = {
-    "Relevance Guardrail": "Ensure messages are relevant to airline support",
-    "Jailbreak Guardrail":
-      "Detect and block attempts to bypass or override system instructions",
+    [t("relevanceGuardrail")]: t("relevanceDescription"),
+    [t("jailbreakGuardrail")]: t("jailbreakDescription"),
   };
 
   const extractGuardrailName = (rawName: string): string =>
-    guardrailNameMap[rawName] ?? rawName;
+    localizeGuardrailName(guardrailNameMap[rawName] ?? rawName, locale);
 
   const guardrailsToShow: GuardrailCheck[] = inputGuardrails.map((rawName) => {
     const existing = guardrails.find((gr) => gr.name === rawName);
@@ -43,7 +44,7 @@ export function Guardrails({ guardrails, inputGuardrails }: GuardrailsProps) {
 
   return (
     <PanelSection
-      title="Guardrails"
+      title={t("guardrails")}
       icon={<Shield className="h-4 w-4 text-blue-600" />}
     >
       <div className="grid grid-cols-3 gap-3">
@@ -70,12 +71,12 @@ export function Guardrails({ guardrails, inputGuardrails }: GuardrailsProps) {
                 {!gr.input || gr.passed ? (
                   <Badge className="mt-2 px-2 py-1 bg-emerald-500 hover:bg-emerald-600 flex items-center text-white">
                     <CheckCircle className="h-4 w-4 mr-1 text-white" />
-                    Passed
+                    {t("passed")}
                   </Badge>
                 ) : (
                   <Badge className="mt-2 px-2 py-1 bg-red-500 hover:bg-red-600 flex items-center text-white">
                     <XCircle className="h-4 w-4 mr-1 text-white" />
-                    Failed
+                    {t("failed")}
                   </Badge>
                 )}
               </div>
