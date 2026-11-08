@@ -22,6 +22,20 @@ gate --config config/gate.example.yaml doctor
 
 Built-in defaults are overridden by the YAML file, then `GATE_*` environment variables, then command-line overrides. The default config path is `config/gate.yaml`; set `GATE_CONFIG` or pass `--config` to use another file.
 
-P1 provides the package, configuration validation, safe effective-config display, and core data/error/logging models. P2 adds the SUT diagnostic and ChatKit adapter. Case execution, evaluators, and report generation are subsequent phases and are not represented as implemented commands yet. A browser-based product console is planned after the CLI/CI evaluation flow stabilizes; it is not implemented yet.
+P1–P3 provide the package/configuration foundation, ChatKit SUT adapter, and versioned trace normalization/storage. P4–P5 add YAML/JSON case validation, deterministic trace evaluators, serial case execution, sanitized JSON/Markdown reports, and gate exit codes. The initial 15 cases are a static suite; run them against the SUT to establish actual behavior. The SUT still uses its configured external model, so evaluator determinism does not guarantee deterministic model responses. Baseline comparison, semantic scoring, CI regression demonstration, and the browser product console are planned later.
+
+Validate the bundled cases without contacting the SUT:
+
+```powershell
+gate --config config/gate.example.yaml validate-cases
+```
+
+Run one case against a healthy SUT (this sends a real prompt to the SUT's configured model provider):
+
+```powershell
+gate --config config/gate.example.yaml run --case AIR-01
+```
+
+By default, only critical assertion failures block the gate; infrastructure errors and incomplete traces always return non-zero. Reports are written under `reports/runs/` and traces under `reports/traces/`. Use `--tag`, `--risk`, `--fail-on`, and `--output` to narrow or tune a run. See [case format](docs/cases.md) and [CLI behavior/exit codes](docs/cli.md).
 
 See [the phase plan](agent-regression-gate-phase-plan.md), [architecture outline](docs/architecture.md), and [SUT contract](docs/sut-contract.md).

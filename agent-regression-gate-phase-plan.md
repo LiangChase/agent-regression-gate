@@ -28,7 +28,19 @@
 
 真实 SUT 的航班状态查询已生成脱敏样例 [`AIR-01.trace.json`](./docs/examples/sample-airline-status-20261108/AIR-01.trace.json)：样例包含 handoff、业务工具调用/结果、消息、context update 和 guardrail；raw snapshots 已保存且经过同一脱敏器。API key、thread/request ID 及未使用的敏感字段均未保存为可识别原值。SUT 源端对部分 AgentEvent 文本已有约 200 字符截断，Gate 无法恢复源端已丢弃内容；该限制已写入 trace 元数据与说明。
 
-**验收评估：** 本地样例 JSON 可读回，schema version、采集状态、工具轨迹状态、事件类型、原始快照数量和样例中的 key/email 字符串模式均已核对。当前仓库 `.venv` 指向已不存在的 `C:\Python314\python.exe`，因此本轮无法用该虚拟环境完成 compile/config-check；需修复或重建开发环境后补跑。P3 只交付采集数据模型与存储层，尚未提供 case runner/CLI 执行入口；P4/P5 将接入 cases 与实际执行流程。P3 不引入云数据库，当前本地/CI 文件型报告存储满足单用户阶段需求。
+**验收评估：** 本地样例 JSON 可读回，schema version、采集状态、工具轨迹状态、事件类型、原始快照数量和样例中的 key/email 字符串模式均已核对。最初仓库 `.venv` 指向不存在的 `C:\Python314\python.exe`；后续发现可用的系统 Python 3.12，并在 P4/P5 阶段用它完成编译和 CLI 验收。P3 不引入云数据库，当前本地/CI 文件型报告存储满足单用户阶段需求。
+
+## P4 执行记录（2026-11-09）
+
+已实现 YAML/JSON case 加载器和执行前静态校验：case/rule 必填项、稳定 ID 与重复 ID、未知字段和 evaluator、严重级别、turn、超时范围及 evaluator 参数/正则格式。支持多轮和参数化实例（报告保留 base case ID 与参数值）；preconditions 作为说明记录，因为 SUT adapter 没有 context seeding API。确定性 evaluator 覆盖工具必须/禁止调用、调用次数、参数等值/必填/正则、有序调用、allowlist、handoff、最终回复包含/排除、trace 完整性和最终 context。首批 `AIR-01`–`AIR-15` 共 15 个 case 模板、16 个具体实例（25 条规则）落在 `cases/airline/cases.yaml`；与 SUT 能力边界见 [`docs/cases.md`](./docs/cases.md) 和风险映射。
+
+**验收评估：** Python 3.12 `compileall` 通过；`gate --config config/gate.example.yaml validate-cases --json` 成功，识别 15 个模板、16 个实例和 25 条规则。该结果是静态校验，不代表全部行为规则已经真实 SUT 验证通过。
+
+## P5 执行记录（2026-11-09）
+
+已实现串行 runner：每条 case 创建新 SUT thread，多轮在同一 thread 执行，每轮完成后立即抓状态快照，规范化并保存 trace，再运行确定性规则。case 失败不会阻止后续 case；启动失败会将被选 cases 标成 infrastructure error；不自动重试对话请求。已提供 `gate run` 的 ID/tag/risk 筛选、`--fail-on`、`--output`、JSON/Markdown 报告和退出码。报告采用 schema version 1、原子写入，并执行 PII/密钥脱敏。退出码：0 通过、1 断言 gate 失败、5 trace incomplete、10 infrastructure/evaluator error、11 trace/report storage error、2 配置/用例无效。
+
+**验收评估：** Python 3.12 `compileall`、example config `config-check` 和 15 个模板/16 个实例的静态校验通过；AIR-01 确定性规则还基于 P3 保存的真实 SUT trace 生成了 JSON/Markdown 示例报告，3 条断言均通过。未对其余实例发起真实模型请求；当前 SUT 无 deterministic model stub，整组真实执行会调用 SUT 所配置的外部模型，故真实 suite 通过率和成本未在本次验收中确认。确定性只保证 evaluator 对已有 trace 的规则判断；P7 需准备可控/稳定的模型策略后再将适合的场景作为 CI 红线。
 
 ## 1. 目标、范围与完成定义
 
@@ -62,7 +74,7 @@
 
 ### 2.1 当前项目状态
 
-- P1 工程骨架、P2 SUT adapter/lifecycle、P3 trace 规范化与持久化已实现；P4 cases/evaluators、P5 runner/report/gate、P6 比较/judge、P7 CI、P8 文档演示尚待开发。
+- P1–P5 的基础 CLI 评测链路已实现；P6 基线比较/语义评分、P7 CI、P8 演示打磨、P9 Web 前端、P10 多用户在线服务尚待开发。
 - 当前交付路线先形成 CLI + CI 的核心评测闭环；用户明确希望继续做 Web 前端，因此新增 P9 产品 UI/API，P10 在线产品部署与多用户能力仍需按目标用户确定范围。
 - SUT 是 `OpenAI CS Agents Demo`，航空客服场景只作为第一套样例用例。
 - 目前已有一次人工启动和请求验证记录；这不能替代可重复的自动化集成测试。

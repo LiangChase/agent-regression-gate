@@ -16,8 +16,8 @@ run:
   baselines_dir: baselines
 
 model:
-  execution_mode: deterministic # deterministic | live
-  provider: deepseek # openai | deepseek; only used by the later live SUT runner
+  execution_mode: deterministic # recorded intent only; it does not replace/mock the model inside an external SUT
+  provider: deepseek # Gate metadata hint; the SUT independently selects via LLM_PROVIDER
 
 logging:
   level: INFO
