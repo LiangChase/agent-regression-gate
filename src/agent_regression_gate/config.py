@@ -82,11 +82,20 @@ class LoggingConfig:
 
 
 @dataclass(slots=True)
+class TraceConfig:
+    persist_raw_snapshots: bool = True
+    redact_pii: bool = True
+    max_string_chars: int = 4000
+    max_bundle_bytes: int = 25_000_000
+
+
+@dataclass(slots=True)
 class GateConfig:
     sut: SutConfig = field(default_factory=SutConfig)
     run: RunConfig = field(default_factory=RunConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
+    trace: TraceConfig = field(default_factory=TraceConfig)
     config_path: Path | None = None
 
     def safe_dict(self) -> dict[str, Any]:
@@ -110,6 +119,7 @@ _ALLOWED_KEYS = {
     "run": {"cases_path", "reports_dir", "baselines_dir"},
     "model": {"execution_mode", "provider"},
     "logging": {"level", "format"},
+    "trace": {"persist_raw_snapshots", "redact_pii", "max_string_chars", "max_bundle_bytes"},
 }
 
 _ENV_KEYS = {
@@ -126,6 +136,10 @@ _ENV_KEYS = {
     "GATE_MODEL_PROVIDER": ("model", "provider"),
     "GATE_LOG_LEVEL": ("logging", "level"),
     "GATE_LOG_FORMAT": ("logging", "format"),
+    "GATE_TRACE_PERSIST_RAW_SNAPSHOTS": ("trace", "persist_raw_snapshots"),
+    "GATE_TRACE_REDACT_PII": ("trace", "redact_pii"),
+    "GATE_TRACE_MAX_STRING_CHARS": ("trace", "max_string_chars"),
+    "GATE_TRACE_MAX_BUNDLE_BYTES": ("trace", "max_bundle_bytes"),
 }
 
 
@@ -168,6 +182,20 @@ def _validate_yaml_shape(raw: Any, path: Path) -> dict[str, dict[str, Any]]:
 
 
 def _coerce(section: str, key: str, value: Any) -> Any:
+    if section == "trace" and key in {"persist_raw_snapshots", "redact_pii"}:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str) and value.strip().lower() in {"true", "false"}:
+            return value.strip().lower() == "true"
+        raise ConfigurationError(f"trace.{key} must be true or false.")
+    if section == "trace" and key in {"max_string_chars", "max_bundle_bytes"}:
+        try:
+            result = int(value)
+        except (TypeError, ValueError) as exc:
+            raise ConfigurationError(f"trace.{key} must be an integer.") from exc
+        if result <= 0:
+            raise ConfigurationError(f"trace.{key} must be greater than zero.")
+        return result
     if section == "sut" and key in {
         "request_timeout_seconds", "startup_timeout_seconds", "shutdown_timeout_seconds"
     }:
@@ -233,6 +261,7 @@ def load_config(
         "run": {key: str(value) for key, value in asdict(RunConfig()).items()},
         "model": asdict(ModelConfig()),
         "logging": asdict(LoggingConfig()),
+        "trace": asdict(TraceConfig()),
     }
     for section, values in raw.items():
         merged[section].update(values)
@@ -258,6 +287,7 @@ def load_config(
         run=RunConfig(**typed["run"]),
         model=ModelConfig(**typed["model"]),
         logging=LoggingConfig(**typed["logging"]),
+        trace=TraceConfig(**typed["trace"]),
         config_path=path.resolve() if path.is_file() else path,
     )
     validate_config(result, environment, require_model_credentials=require_model_credentials)

@@ -211,6 +211,7 @@ class ChatKitAdapter:
             events=events,
             guardrails=[dict(item) for item in raw_guardrails],
             extra_fields={key: value for key, value in payload.items() if key not in known},
+            raw_payload=dict(payload),
         )
 
     async def close_session(self, session: SutSession) -> None:

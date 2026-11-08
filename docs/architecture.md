@@ -38,4 +38,4 @@ The CLI and CI invoke the same core directly. The future Web console will use th
 | `reporting/` | JSON and Markdown report generation | P5 |
 | `cli.py` | Stable command line boundary | P1 onward |
 
-P1 configuration/foundation modules and P2 SUT adapter/lifecycle are implemented. Trace persistence, case execution, evaluators, reports, and the Web/API product surface remain planned work.
+P1 configuration/foundation, P2 SUT adapter/lifecycle, and P3 trace normalization/persistence are implemented. Case execution, evaluators, reports, and the Web/API product surface remain planned work.

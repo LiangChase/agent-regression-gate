@@ -26,6 +26,7 @@ baselines/local/**
 *.trace.json
 *.trace.jsonl
 *.run.json
+!docs/examples/**/*.trace.json
 
 # Editor / OS
 .idea/

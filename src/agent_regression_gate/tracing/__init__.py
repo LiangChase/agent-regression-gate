@@ -1,1 +1,1 @@
-"""Trace schemas, normalization, persistence, and redaction (implemented in P3)."""
+"""Versioned traces, SUT event normalization, persistence, and redaction."""

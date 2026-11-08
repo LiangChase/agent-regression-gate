@@ -1,0 +1,401 @@
+{
+  "schema_version": 1,
+  "trace": {
+    "trace_id": "trace-sample-air-01",
+    "run_id": "sample-airline-status-20261108",
+    "case_id": "AIR-01",
+    "thread_id": "[REDACTED]",
+    "sut_revision": "b4fa4678cd0bace97981ed33e4e2f31acd379c8f",
+    "status": "pending",
+    "inputs": [
+      {
+        "turn_index": 1,
+        "text": "What is the status of flight FLT-123?",
+        "started_at": "2026-11-08T15:34:08.762390+00:00",
+        "completed_at": "2026-11-08T15:34:14.537268+00:00",
+        "request_id": "[REDACTED]",
+        "assistant_message_completed": true
+      }
+    ],
+    "events": [
+      {
+        "event_id": "209ec69b4e3541caa4ff989ab0dc54e4",
+        "event_type": "handoff",
+        "sequence": 1,
+        "agent": "Triage Agent",
+        "content": "Triage Agent -> Flight Information Agent",
+        "metadata": {
+          "source_agent": "Triage Agent",
+          "target_agent": "Flight Information Agent"
+        },
+        "timestamp": "2026-11-08T15:34:12.957875+00:00",
+        "turn_index": 1,
+        "source": "chatkit.state",
+        "source_event_type": "handoff",
+        "source_event_id": "209ec69b4e3541caa4ff989ab0dc54e4",
+        "extra_fields": {}
+      },
+      {
+        "event_id": "831dc26a8d8b413699f46998beddf743",
+        "event_type": "tool_call",
+        "sequence": 2,
+        "agent": "Flight Information Agent",
+        "content": "flight_status_tool",
+        "metadata": {
+          "tool_args": {
+            "flight_number": "FLT-123"
+          }
+        },
+        "timestamp": "2026-11-08T15:34:14.006548+00:00",
+        "turn_index": 1,
+        "source": "chatkit.state",
+        "source_event_type": "tool_call",
+        "source_event_id": "831dc26a8d8b413699f46998beddf743",
+        "extra_fields": {}
+      },
+      {
+        "event_id": "f6d20c7540ad49ff8c95c27327421c78",
+        "event_type": "tool_result",
+        "sequence": 3,
+        "agent": "Flight Information Agent",
+        "content": "Flight FLT-123 (San Francisco (SFO) to Los Angeles (LAX)) | Status: On time and operating as scheduled | Gate: A10 | Scheduled 2024-12-09 16:10 -> 2024-12-09 17:35",
+        "metadata": {
+          "tool_result": "Flight FLT-123 (San Francisco (SFO) to Los Angeles (LAX)) | Status: On time and operating as scheduled | Gate: A10 | Scheduled 2024-12-09 16:10 -> 2024-12-09 17:35"
+        },
+        "timestamp": "2026-11-08T15:34:14.006618+00:00",
+        "turn_index": 1,
+        "source": "chatkit.state",
+        "source_event_type": "tool_output",
+        "source_event_id": "f6d20c7540ad49ff8c95c27327421c78",
+        "extra_fields": {}
+      },
+      {
+        "event_id": "77b2b71335a34f6bb21f67fd427c53ce",
+        "event_type": "message",
+        "sequence": 4,
+        "agent": "Flight Information Agent",
+        "content": "Here's the current status for your flight:\n\n**FLT-123 — San Francisco (SFO) → Los Angeles (LAX)**\n- **Status:** On time, operating as scheduled ✅\n- **Gate:** A10\n- **Departure:** 2024-12-09, 16:10\n- *…",
+        "metadata": {},
+        "timestamp": "2026-11-08T15:34:14.536709+00:00",
+        "turn_index": 1,
+        "source": "chatkit.state",
+        "source_event_type": "message",
+        "source_event_id": "77b2b71335a34f6bb21f67fd427c53ce",
+        "extra_fields": {}
+      },
+      {
+        "event_id": "96716883c4f245988b590f681fc6c5d7",
+        "event_type": "context_update",
+        "sequence": 5,
+        "agent": "Flight Information Agent",
+        "content": "",
+        "metadata": {
+          "changes": {
+            "passenger_name": "[REDACTED]",
+            "confirmation_number": "[REDACTED]",
+            "seat_number": "23A",
+            "flight_number": "FLT-123",
+            "origin": "San Francisco (SFO)",
+            "destination": "Los Angeles (LAX)"
+          }
+        },
+        "timestamp": "2026-11-08T15:34:14.536772+00:00",
+        "turn_index": 1,
+        "source": "chatkit.state",
+        "source_event_type": "context_update",
+        "source_event_id": "96716883c4f245988b590f681fc6c5d7",
+        "extra_fields": {}
+      },
+      {
+        "event_id": "c2c66d6292234ef19b7928ca8387fd81",
+        "event_type": "guardrail",
+        "sequence": 6,
+        "agent": "Flight Information Agent",
+        "content": "Relevance Guardrail",
+        "metadata": {
+          "input": "What is the status of flight FLT-123?",
+          "reasoning": "The user is asking about the status of a specific flight, which is directly related to airline customer service.",
+          "passed": true
+        },
+        "timestamp": "2026-11-08T15:34:14.536734+00:00",
+        "turn_index": 1,
+        "source": "chatkit.guardrails",
+        "source_event_type": "guardrail",
+        "source_event_id": "c2c66d6292234ef19b7928ca8387fd81",
+        "extra_fields": {}
+      },
+      {
+        "event_id": "93f1135385e542f29313842a4f0f1472",
+        "event_type": "guardrail",
+        "sequence": 7,
+        "agent": "Flight Information Agent",
+        "content": "Jailbreak Guardrail",
+        "metadata": {
+          "input": "What is the status of flight FLT-123?",
+          "reasoning": "The user is asking a normal flight status question with no attempt to override instructions or perform a jailbreak.",
+          "passed": true
+        },
+        "timestamp": "2026-11-08T15:34:14.536734+00:00",
+        "turn_index": 1,
+        "source": "chatkit.guardrails",
+        "source_event_type": "guardrail",
+        "source_event_id": "93f1135385e542f29313842a4f0f1472",
+        "extra_fields": {}
+      }
+    ],
+    "started_at": "2026-11-08T15:34:08.762390+00:00",
+    "completed_at": "2026-11-08T15:34:14.537268+00:00",
+    "completeness_notes": [],
+    "source_limitations": [
+      "SUT AgentEvent content and tool output may already be truncated at source."
+    ],
+    "schema_version": 1,
+    "capture_status": "complete",
+    "tool_trace_status": "present",
+    "source": "chatkit.state",
+    "ordering_policy": "SUT snapshot array order; cumulative snapshots de-duplicated by event ID",
+    "case_version": "1",
+    "model_name": "deepseek-flash",
+    "execution_mode": "live",
+    "adapter_version": "1",
+    "final_context": {
+      "passenger_name": "[REDACTED]",
+      "confirmation_number": "[REDACTED]",
+      "seat_number": "23A",
+      "flight_number": "FLT-123",
+      "account_number": "[REDACTED]",
+      "special_service_note": "[REDACTED]",
+      "origin": "San Francisco (SFO)",
+      "destination": "Los Angeles (LAX)"
+    }
+  },
+  "raw_snapshots": [
+    {
+      "schema_version": 1,
+      "source": "chatkit.state",
+      "run_id": "sample-airline-status-20261108",
+      "case_id": "AIR-01",
+      "thread_id": "[REDACTED]",
+      "turn_index": 1,
+      "turn": {
+        "thread_id": "[REDACTED]",
+        "user_input": "What is the status of flight FLT-123?",
+        "started_at": "2026-11-08T15:34:08.762390+00:00",
+        "completed_at": "2026-11-08T15:34:14.537268+00:00",
+        "assistant_message_completed": true,
+        "event_type_counts": {
+          "thread.item.done": 3,
+          "stream_options": 1,
+          "client_effect": 7,
+          "thread.item.added": 2,
+          "thread.item.updated": 182
+        },
+        "unknown_event_types": [],
+        "unknown_events": [],
+        "request_id": "[REDACTED]"
+      },
+      "unknown_sse_events": [],
+      "snapshot": {
+        "thread_id": "[REDACTED]",
+        "current_agent": "Flight Information Agent",
+        "context": {
+          "passenger_name": "[REDACTED]",
+          "confirmation_number": "[REDACTED]",
+          "seat_number": "23A",
+          "flight_number": "FLT-123",
+          "account_number": "[REDACTED]",
+          "special_service_note": "[REDACTED]",
+          "origin": "San Francisco (SFO)",
+          "destination": "Los Angeles (LAX)"
+        },
+        "agents": [
+          {
+            "name": "Triage Agent",
+            "description": "Delegates requests to the right specialist agent (flight info, booking, seats, FAQ, baggage, compensation).",
+            "handoffs": [
+              "Flight Information Agent",
+              "Booking and Cancellation Agent",
+              "Seat and Special Services Agent",
+              "FAQ Agent",
+              "Refunds and Compensation Agent"
+            ],
+            "tools": [
+              "get_trip_details"
+            ],
+            "input_guardrails": [
+              "Relevance Guardrail",
+              "Jailbreak Guardrail"
+            ]
+          },
+          {
+            "name": "FAQ Agent",
+            "description": "Answers common questions about policies, baggage, seats, and compensation.",
+            "handoffs": [
+              "Triage Agent"
+            ],
+            "tools": [
+              "faq_lookup_tool"
+            ],
+            "input_guardrails": [
+              "Relevance Guardrail",
+              "Jailbreak Guardrail"
+            ]
+          },
+          {
+            "name": "Seat and Special Services Agent",
+            "description": "Updates seats and handles medical or special service seating.",
+            "handoffs": [
+              "Refunds and Compensation Agent",
+              "Triage Agent"
+            ],
+            "tools": [
+              "update_seat",
+              "assign_special_service_seat",
+              "display_seat_map"
+            ],
+            "input_guardrails": [
+              "Relevance Guardrail",
+              "Jailbreak Guardrail"
+            ]
+          },
+          {
+            "name": "Flight Information Agent",
+            "description": "Provides flight status, connection impact, and alternate options.",
+            "handoffs": [
+              "Booking and Cancellation Agent",
+              "Triage Agent"
+            ],
+            "tools": [
+              "flight_status_tool",
+              "get_matching_flights"
+            ],
+            "input_guardrails": [
+              "Relevance Guardrail",
+              "Jailbreak Guardrail"
+            ]
+          },
+          {
+            "name": "Booking and Cancellation Agent",
+            "description": "Handles new bookings, rebookings after delays, and cancellations.",
+            "handoffs": [
+              "Seat and Special Services Agent",
+              "Refunds and Compensation Agent",
+              "Triage Agent"
+            ],
+            "tools": [
+              "cancel_flight",
+              "get_matching_flights",
+              "book_new_flight"
+            ],
+            "input_guardrails": [
+              "Relevance Guardrail",
+              "Jailbreak Guardrail"
+            ]
+          },
+          {
+            "name": "Refunds and Compensation Agent",
+            "description": "Opens compensation cases and issues hotel/meal support after delays.",
+            "handoffs": [
+              "FAQ Agent",
+              "Triage Agent"
+            ],
+            "tools": [
+              "issue_compensation",
+              "faq_lookup_tool"
+            ],
+            "input_guardrails": [
+              "Relevance Guardrail",
+              "Jailbreak Guardrail"
+            ]
+          }
+        ],
+        "events": [
+          {
+            "id": "209ec69b4e3541caa4ff989ab0dc54e4",
+            "type": "handoff",
+            "agent": "Triage Agent",
+            "content": "Triage Agent -> Flight Information Agent",
+            "metadata": {
+              "source_agent": "Triage Agent",
+              "target_agent": "Flight Information Agent"
+            },
+            "timestamp": 1794152052957.8745
+          },
+          {
+            "id": "831dc26a8d8b413699f46998beddf743",
+            "type": "tool_call",
+            "agent": "Flight Information Agent",
+            "content": "flight_status_tool",
+            "metadata": {
+              "tool_args": {
+                "flight_number": "FLT-123"
+              }
+            },
+            "timestamp": 1794152054006.548
+          },
+          {
+            "id": "f6d20c7540ad49ff8c95c27327421c78",
+            "type": "tool_output",
+            "agent": "Flight Information Agent",
+            "content": "Flight FLT-123 (San Francisco (SFO) to Los Angeles (LAX)) | Status: On time and operating as scheduled | Gate: A10 | Scheduled 2024-12-09 16:10 -> 2024-12-09 17:35",
+            "metadata": {
+              "tool_result": "Flight FLT-123 (San Francisco (SFO) to Los Angeles (LAX)) | Status: On time and operating as scheduled | Gate: A10 | Scheduled 2024-12-09 16:10 -> 2024-12-09 17:35"
+            },
+            "timestamp": 1794152054006.618
+          },
+          {
+            "id": "77b2b71335a34f6bb21f67fd427c53ce",
+            "type": "message",
+            "agent": "Flight Information Agent",
+            "content": "Here's the current status for your flight:\n\n**FLT-123 — San Francisco (SFO) → Los Angeles (LAX)**\n- **Status:** On time, operating as scheduled ✅\n- **Gate:** A10\n- **Departure:** 2024-12-09, 16:10\n- *…",
+            "metadata": null,
+            "timestamp": 1794152054536.709
+          },
+          {
+            "id": "96716883c4f245988b590f681fc6c5d7",
+            "type": "context_update",
+            "agent": "Flight Information Agent",
+            "content": "",
+            "metadata": {
+              "changes": {
+                "passenger_name": "[REDACTED]",
+                "confirmation_number": "[REDACTED]",
+                "seat_number": "23A",
+                "flight_number": "FLT-123",
+                "origin": "San Francisco (SFO)",
+                "destination": "Los Angeles (LAX)"
+              }
+            },
+            "timestamp": 1794152054536.7717
+          }
+        ],
+        "guardrails": [
+          {
+            "id": "c2c66d6292234ef19b7928ca8387fd81",
+            "name": "Relevance Guardrail",
+            "input": "What is the status of flight FLT-123?",
+            "reasoning": "The user is asking about the status of a specific flight, which is directly related to airline customer service.",
+            "passed": true,
+            "timestamp": 1794152054536.734
+          },
+          {
+            "id": "93f1135385e542f29313842a4f0f1472",
+            "name": "Jailbreak Guardrail",
+            "input": "What is the status of flight FLT-123?",
+            "reasoning": "The user is asking a normal flight status question with no attempt to override instructions or perform a jailbreak.",
+            "passed": true,
+            "timestamp": 1794152054536.734
+          }
+        ]
+      }
+    }
+  ],
+  "raw_snapshots_included": true,
+  "raw_snapshot_schema_version": 1,
+  "trace_file_scope": "one case trace within a run",
+  "redaction_summary": {
+    "fields_redacted": 18,
+    "text_matches_redacted": 0,
+    "values_truncated": 0
+  }
+}

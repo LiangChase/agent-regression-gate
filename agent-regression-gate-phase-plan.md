@@ -18,6 +18,18 @@
 
 **验收评估：** 本地 editable install 成功；`gate --help` 可用；example YAML 能通过校验；环境变量覆盖 YAML、CLI 覆盖环境变量；无配置文件返回配置错误码 2；结构化日志包含 run/case ID，测试用 dummy key 和带凭据/query 的 URL 在日志/错误对象中均被脱敏；源码 `compileall` 通过。`run`、`validate-cases` 仍属于后续阶段，`doctor` 已在 P2 实现。
 
+## P2 执行记录（2026-11-08）
+
+已实现 ChatKit SSE adapter、thread/session 边界、状态快照读取、SUT health/doctor 诊断，以及本地进程/Compose 生命周期抽象。adapter 保留未知事件和额外字段供后续 trace 层处理；SUT 版本与接口限制见 `docs/sut-adapter.md`、`docs/sut-contract.md`。真实 SUT 调用已在 P3 集成样例中再次验证。
+
+## P3 执行记录（2026-11-08）
+
+已实现版本化的 Gate Trace 与 raw snapshot envelope、按 SUT 快照顺序规范化事件、累计快照去重、turn/thread 关联、采集完整性和 tool trace 状态、敏感字段/文本脱敏、字符串截断、大小限制，以及每 case 原子 JSON 持久化和版本校验。配置通过 `trace.*` YAML 项和 `GATE_TRACE_*` 环境变量控制；设计与事件映射见 [`docs/trace-schema.md`](./docs/trace-schema.md)。
+
+真实 SUT 的航班状态查询已生成脱敏样例 [`AIR-01.trace.json`](./docs/examples/sample-airline-status-20261108/AIR-01.trace.json)：样例包含 handoff、业务工具调用/结果、消息、context update 和 guardrail；raw snapshots 已保存且经过同一脱敏器。API key、thread/request ID 及未使用的敏感字段均未保存为可识别原值。SUT 源端对部分 AgentEvent 文本已有约 200 字符截断，Gate 无法恢复源端已丢弃内容；该限制已写入 trace 元数据与说明。
+
+**验收评估：** 本地样例 JSON 可读回，schema version、采集状态、工具轨迹状态、事件类型、原始快照数量和样例中的 key/email 字符串模式均已核对。当前仓库 `.venv` 指向已不存在的 `C:\Python314\python.exe`，因此本轮无法用该虚拟环境完成 compile/config-check；需修复或重建开发环境后补跑。P3 只交付采集数据模型与存储层，尚未提供 case runner/CLI 执行入口；P4/P5 将接入 cases 与实际执行流程。P3 不引入云数据库，当前本地/CI 文件型报告存储满足单用户阶段需求。
+
 ## 1. 目标、范围与完成定义
 
 ### 1.1 项目最终要证明什么
@@ -50,7 +62,7 @@
 
 ### 2.1 当前项目状态
 
-- P1 工程骨架与 P2 SUT adapter/lifecycle 已实现并推送；P3 trace 持久化、P4 cases/evaluators、P5 runner/report/gate、P6 比较/judge、P7 CI、P8 文档演示尚待开发。
+- P1 工程骨架、P2 SUT adapter/lifecycle、P3 trace 规范化与持久化已实现；P4 cases/evaluators、P5 runner/report/gate、P6 比较/judge、P7 CI、P8 文档演示尚待开发。
 - 当前交付路线先形成 CLI + CI 的核心评测闭环；用户明确希望继续做 Web 前端，因此新增 P9 产品 UI/API，P10 在线产品部署与多用户能力仍需按目标用户确定范围。
 - SUT 是 `OpenAI CS Agents Demo`，航空客服场景只作为第一套样例用例。
 - 目前已有一次人工启动和请求验证记录；这不能替代可重复的自动化集成测试。

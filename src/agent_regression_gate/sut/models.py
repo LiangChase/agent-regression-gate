@@ -59,6 +59,7 @@ class SutTraceSnapshot:
     guardrails: list[dict[str, Any]]
     fetched_at: datetime = field(default_factory=utc_now)
     extra_fields: dict[str, Any] = field(default_factory=dict)
+    raw_payload: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True)

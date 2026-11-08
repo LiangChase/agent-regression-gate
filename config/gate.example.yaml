@@ -22,3 +22,9 @@ model:
 logging:
   level: INFO
   format: json
+
+trace:
+  persist_raw_snapshots: true
+  redact_pii: true
+  max_string_chars: 4000
+  max_bundle_bytes: 25000000

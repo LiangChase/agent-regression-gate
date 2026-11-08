@@ -12,6 +12,7 @@ class ErrorCategory(StrEnum):
     PROTOCOL = "protocol_error"
     TRACE_INCOMPLETE = "trace_incomplete"
     ASSERTION_FAILURE = "assertion_failure"
+    STORAGE = "storage_error"
     INTERNAL = "internal_error"
 
 
@@ -73,3 +74,8 @@ class TraceIncompleteError(GateError):
 class AssertionFailure(GateError):
     category = ErrorCategory.ASSERTION_FAILURE
     exit_code = 1
+
+
+class TraceStorageError(GateError):
+    category = ErrorCategory.STORAGE
+    exit_code = 11
