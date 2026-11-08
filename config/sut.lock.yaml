@@ -8,6 +8,5 @@ sut:
   local_branch_at_verification: SUT
   verification_date: 2026-11-08
 
-# The local checkout SHA was verified. Remote reachability of the project fork
-# could not be independently checked from the restricted network environment.
-# Before CI relies on this lock, confirm that project_branch contains revision.
+# Both the local checkout and remote project_branch were observed at revision
+# on 2026-11-08. CI should still checkout by this immutable SHA.

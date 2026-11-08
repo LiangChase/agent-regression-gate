@@ -15,9 +15,9 @@
 | 本地 HEAD | `b4fa4678cd0bace97981ed33e4e2f31acd379c8f` |
 | 本地工作区 | 核验时 `git status --porcelain` 为空，工作区干净 |
 | 本地 Git remote | `origin` 当前指向 OpenAI 上游仓库 |
-| 使用的 fork | 项目上下文中的 `LiangChase/agent-regression-gate` 的 `SUT` 分支；本次网络受限，无法再次确认远端分支当前是否仍指向该 SHA |
+| 使用的 fork | `LiangChase/agent-regression-gate` 的 `SUT` 分支；后续远端核对确认该分支指向相同 SHA |
 
-完整锁定值见 [`../config/sut.lock.yaml`](../config/sut.lock.yaml)。锁定时应以完整 commit SHA checkout，不能只使用分支名。需要在能连通 GitHub 的 CI/开发环境中再次确认 fork 的 `SUT` 分支包含该 SHA。
+完整锁定值见 [`../config/sut.lock.yaml`](../config/sut.lock.yaml)。锁定时应以完整 commit SHA checkout，不能只使用分支名。2026-11-08 远端 refs 核对得到 `SUT` → `b4fa4678cd0bace97981ed33e4e2f31acd379c8f`。
 
 ## 2. 许可证与再分发要求
 
@@ -182,6 +182,6 @@ P4 实际设计至少 15 条 case 时，应通过同一业务风险的正向、�
 - 实际发出 ChatKit `threads.create` 请求，获得 HTTP 200 SSE 流；再拉取状态，观察到预期 handoff、工具调用、工具输出及最终消息。
 - SUT `LICENSE` 为 MIT；仓库没有跟踪 `.env` 或 API key 文件。DeepSeek key 不写入 Gate 文档和样例。
 - 通过只读访问 GitHub 页面核实上游仓库、README 描述和 MIT 许可证文本。
-- 本次执行环境无法连接 GitHub 443，因此没有完成 fork `LiangChase/agent-regression-gate` 的远端 SHA 复核。CI 接入前必须从有网络的环境验证 `SUT` 分支可 checkout 且包含锁定 SHA。
+- 随后通过 Git 远端 refs 核对，fork 的 `SUT` 分支指向锁定 SHA `b4fa4678cd0bace97981ed33e4e2f31acd379c8f`。
 
-**P0 结论：** 本地 SUT 的启动、健康检查、真实调用和轨迹读取契约已核实，可进入 Gate adapter 设计；远端 fork SHA 可达性仍是待确认项。默认集成策略建议用本地确定性替身/可控模型保证 PR 稳定性，将 DeepSeek 真实调用留作显式 smoke 模式。
+**P0 结论：** 本地 SUT 的启动、健康检查、真实调用和轨迹读取契约已核实，远端 fork SHA 也已确认，可进入 Gate adapter 设计。默认集成策略建议用本地确定性替身/可控模型保证 PR 稳定性，将 DeepSeek 真实调用留作显式 smoke 模式。

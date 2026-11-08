@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-regression-gate"
+version = "0.1.0"
+description = "Regression gate infrastructure for validating agent behavior rules."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["PyYAML>=6.0,<7"]
+
+[project.scripts]
+gate = "agent_regression_gate.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

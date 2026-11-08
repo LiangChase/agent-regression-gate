@@ -10,7 +10,13 @@
 
 已完成本地 SUT 的许可证、分支与 commit、启动/健康检查、ChatKit 调用、状态快照和首批风险映射核验。核验材料见 [`docs/sut-contract.md`](./docs/sut-contract.md)、[`docs/initial-risk-map.md`](./docs/initial-risk-map.md) 和 [`config/sut.lock.yaml`](./config/sut.lock.yaml)。本地真实会话成功记录了 handoff、`flight_status_tool` 调用、工具输出和最终消息。
 
-**遗留项：** 当前网络环境无法连通 GitHub 443，因此未能独立确认 `LiangChase/agent-regression-gate` 的远端 `SUT` 分支是否包含本地锁定 SHA。CI 使用前需在可联网环境验证该 revision 可从 fork checkout。除此之外，P0 的本地契约核验已完成。
+**核验补充：** 随后已从远端 refs 确认 `LiangChase/agent-regression-gate` 的 `SUT` 指向锁定 SHA `b4fa4678cd0bace97981ed33e4e2f31acd379c8f`，P0 的本地及远端版本核验均已完成。
+
+## P1 执行记录（2026-11-08）
+
+已建立可安装的 `src/` 包结构、配置样例和层级配置入口、错误分类、Run/Case/Trace/Assertion/Gate 数据模型、带 run/case 关联字段的 JSON 日志与脱敏，以及 `gate config-check` CLI。补充了架构图、目录职责文档和本地敏感文件/报告忽略规则。没有为 Gate 预设开源许可证。
+
+**验收评估：** 本地 editable install 成功；`gate --help` 可用；example YAML 能通过校验；环境变量覆盖 YAML、CLI 覆盖环境变量；无配置文件返回配置错误码 2；结构化日志包含 run/case ID，测试用 dummy key 和带凭据/query 的 URL 在日志/错误对象中均被脱敏；源码 `compileall` 通过。`run`、`doctor`、`validate-cases` 仍为明确标注的后续阶段命令，P1 不声称其已实现。
 
 ## 1. 目标、范围与完成定义
 

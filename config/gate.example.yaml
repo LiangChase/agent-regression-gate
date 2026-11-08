@@ -1,0 +1,19 @@
+# Copy to config/gate.yaml for local overrides. Do not put secrets here.
+sut:
+  base_url: http://127.0.0.1:8000
+  start_mode: external # external | process | compose (lifecycle is implemented in P2)
+  health_path: /health
+  request_timeout_seconds: 60
+
+run:
+  cases_path: cases/airline
+  reports_dir: reports
+  baselines_dir: baselines
+
+model:
+  execution_mode: deterministic # deterministic | live
+  provider: deepseek # openai | deepseek; only used by the later live SUT runner
+
+logging:
+  level: INFO
+  format: json
