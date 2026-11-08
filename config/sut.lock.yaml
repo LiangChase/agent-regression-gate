@@ -1,0 +1,13 @@
+# P0 observed SUT revision. Prefer checkout by SHA; do not float on branch tip.
+sut:
+  name: openai-cs-agents-demo
+  upstream_repository: https://github.com/openai/openai-cs-agents-demo.git
+  project_repository: https://github.com/LiangChase/agent-regression-gate.git
+  project_branch: SUT
+  revision: b4fa4678cd0bace97981ed33e4e2f31acd379c8f
+  local_branch_at_verification: SUT
+  verification_date: 2026-11-08
+
+# The local checkout SHA was verified. Remote reachability of the project fork
+# could not be independently checked from the restricted network environment.
+# Before CI relies on this lock, confirm that project_branch contains revision.
