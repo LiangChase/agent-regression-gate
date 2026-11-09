@@ -56,7 +56,7 @@
 
 另有手动 `.github/workflows/live-sut-smoke.yml`，按 `config/sut.lock.yaml` 中的固定 SUT SHA 检出 SUT，仅运行 AIR-01；需显式启用并配置 GitHub `DEEPSEEK_API_KEY` secret。该工作流可能产生模型费用，不属于 PR 检查。默认 fixture 是 Gate 管线的可重复契约验证，不代表真实模型行为表现。
 
-**验收状态：** Python 固定为 3.12；新增 `uv.lock` 与 `uv sync --locked --no-dev` 锁定 Gate 运行依赖。本轮锁定依赖改动尚待 GitHub Actions 重新执行。此前未锁定安装版本的工作流 run [42553157226](https://github.com/LiangChase/agent-regression-gate/actions/runs/42553157226) 已证明 full suite、pass/block probe、baseline diff 和 artifact upload 成功；同一版本负向 run [42553248151](https://github.com/LiangChase/agent-regression-gate/actions/runs/42553248151) 因 AIR-15 critical failure 变红，失败步骤后的 artifact upload 成功。新锁定工作流通过后再更新最终证据。Required check / branch protection 仍须在 GitHub 仓库设置中启用，不能由工作流文件代替。
+**验收状态：** Python 固定为 3.12；`uv.lock` 和 `uv sync --locked --no-dev` 锁定 Gate 运行依赖，已在最终 commit `881d1f2ce9e00950e978512b4108647d86352d2f` 上验证。绿色 run [42553806464](https://github.com/LiangChase/agent-regression-gate/actions/runs/42553806464) 中 full suite、AIR-15 probe、baseline diff 与报告 artifact 上传均成功，artifact `agent-regression-gate-42553806464` 已生成。相同 SHA 的手动红色 run [42553888259](https://github.com/LiangChase/agent-regression-gate/actions/runs/42553888259) 在 `Run AIR-15...` 步骤因未授权工具断言失败，报告上传步骤成功，artifact `intentional-regression-42553888259` 已生成。**仓库 main 的 required status check / branch protection 未启用**；这会改变后续合并/直接推送策略，需仓库所有者确认后设置，workflow 文件本身不会自动替用户改变该策略。
 
 ## P8 执行记录（2026-11-09）
 
@@ -96,7 +96,7 @@
 
 ### 2.1 当前项目状态
 
-- P0–P8 的 CLI 评测闭环、比较/语义评分能力、确定性 CI 工作流及文档演示支架已实现，并有远程 Actions 绿色/红色验收记录；P9 Web 前端和 P10 多用户在线服务仍待完成。
+- P0–P8 的 CLI 评测闭环、比较/语义评分能力、确定性 CI 工作流及文档演示支架已实现，并有远程 Actions 绿色/红色验收记录；main 分支保护属于待所有者确认的仓库设置；P9 Web 前端和 P10 多用户在线服务仍待完成。
 - 当前交付路线先形成 CLI + CI 的核心评测闭环；用户明确希望继续做 Web 前端，因此新增 P9 产品 UI/API，P10 在线产品部署与多用户能力仍需按目标用户确定范围。
 - SUT 是 `OpenAI CS Agents Demo`，航空客服场景只作为第一套样例用例。
 - 目前已有一次人工启动和请求验证记录；这不能替代可重复的自动化集成测试。
