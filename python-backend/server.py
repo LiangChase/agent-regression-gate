@@ -133,6 +133,40 @@ def _find_handoff_callback(handoff: Handoff, max_depth: int = 5) -> Any:
         return None
 
 
+_PLACEHOLDER_ITEM_IDS = {"__fake_id__", ""}
+
+
+def _remap_assistant_item_ids(event: Any, holder: Dict[str, str]) -> Any:
+    """Give streamed assistant messages unique ids.
+
+    The Chat Completions adapter used for DeepSeek reuses a placeholder id
+    ("__fake_id__") for every output message. ChatKit tracks thread items by
+    id, so without remapping a new answer replaces the previous one in the UI.
+    """
+    item = getattr(event, "item", None)
+    if item is not None and getattr(item, "type", None) in {"assistant_message", "message"}:
+        if getattr(item, "id", None) in _PLACEHOLDER_ITEM_IDS:
+            if event.type == "thread.item.added" or not holder.get("id"):
+                holder["id"] = f"msg_{uuid4().hex[:8]}"
+            new_id = holder["id"]
+            if getattr(item, "id", None) != new_id:
+                try:
+                    event = event.model_copy(
+                        update={"item": item.model_copy(update={"id": new_id})}
+                    )
+                except Exception:
+                    pass
+        return event
+    if getattr(event, "item_id", None) in _PLACEHOLDER_ITEM_IDS:
+        new_id = holder.get("id")
+        if new_id:
+            try:
+                event = event.model_copy(update={"item_id": new_id})
+            except Exception:
+                pass
+    return event
+
+
 def _build_agents_list() -> List[Dict[str, Any]]:
     """Build a list of all available agents and their metadata."""
 
@@ -365,6 +399,7 @@ class AirlineServer(ChatKitServer[dict[str, Any]]):
             state=state.context,
         )
         streamed_items_seen = 0
+        assistant_item_ids: Dict[str, str] = {}
 
         # Tell the client which thread to bind runner updates to before streaming starts.
         yield ClientEffectEvent(name="runner_bind_thread", data={"thread_id": thread.id, "ts": time.time()})
@@ -376,6 +411,7 @@ class AirlineServer(ChatKitServer[dict[str, Any]]):
                 context=chat_context,
             )
             async for event in stream_agent_response(chat_context, result):
+                event = _remap_assistant_item_ids(event, assistant_item_ids)
                 if isinstance(event, ProgressUpdateEvent) or getattr(event, "type", "") == "progress_update_event":
                     # Ignore progress updates for the Runner panel; ChatKit will handle them separately.
                     continue
