@@ -1,0 +1,76 @@
+name: Live SUT smoke (manual, paid API)
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_live_sut:
+        description: Run AIR-01 against the pinned airline SUT using DeepSeek API
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  live-smoke:
+    if: ${{ inputs.run_live_sut }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: openai/openai-cs-agents-demo
+          ref: b4fa4678cd0bace97981ed33e4e2f31acd379c8f
+          path: sut
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Require configured DeepSeek secret
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: test -n "$DEEPSEEK_API_KEY" || (echo "Set repository secret DEEPSEEK_API_KEY before enabling the paid smoke." && exit 1)
+      - name: Install Gate and pinned SUT dependencies
+        run: |
+          python -m pip install -e .
+          python -m pip install -r sut/python-backend/requirements.txt
+      - name: Start pinned SUT
+        env:
+          LLM_PROVIDER: deepseek
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK_MODEL: deepseek-flash
+          AGENT_RESPONSE_LANGUAGE: zh-CN
+        working-directory: sut/python-backend
+        run: |
+          python -m uvicorn main:app --host 127.0.0.1 --port 8000 > "$RUNNER_TEMP/sut.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/sut.pid"
+          python - <<'PY'
+          import time, urllib.request
+          for _ in range(90):
+              try:
+                  with urllib.request.urlopen("http://127.0.0.1:8000/health", timeout=1) as response:
+                      if response.status == 200:
+                          break
+              except OSError:
+                  time.sleep(1)
+          else:
+              raise SystemExit("Pinned SUT did not become healthy")
+          PY
+      - name: Run live smoke case
+        env:
+          GATE_SUT_BASE_URL: http://127.0.0.1:8000
+          GATE_SUT_REVISION: b4fa4678cd0bace97981ed33e4e2f31acd379c8f
+          GATE_MODEL_EXECUTION_MODE: live
+          GATE_MODEL_PROVIDER: deepseek
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: gate --config config/gate.example.yaml run --case AIR-01 --output reports/live-sut/AIR-01
+      - name: Upload live smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-sut-smoke-${{ github.run_id }}
+          if-no-files-found: warn
+          path: |
+            reports/live-sut/
+            ${{ runner.temp }}/sut.log

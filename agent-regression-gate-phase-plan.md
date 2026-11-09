@@ -42,6 +42,28 @@
 
 **验收评估：** Python 3.12 `compileall`、example config `config-check` 和 15 个模板/16 个实例的静态校验通过；AIR-01 确定性规则还基于 P3 保存的真实 SUT trace 生成了 JSON/Markdown 示例报告，3 条断言均通过。未对其余实例发起真实模型请求；当前 SUT 无 deterministic model stub，整组真实执行会调用 SUT 所配置的外部模型，故真实 suite 通过率和成本未在本次验收中确认。确定性只保证 evaluator 对已有 trace 的规则判断；P7 需准备可控/稳定的模型策略后再将适合的场景作为 CI 红线。
 
+## P6 执行记录（2026-11-09）
+
+已实现 run report 的比较元数据（case-set SHA-256、trace schema、evaluator 版本、模型配置、SUT revision）、显式 baseline 保存命令，以及 JSON/Markdown diff。Diff 按稳定 case/assertion ID 分类新增失败、已修复、持续失败、通过项变化、case 新增/移除和 case 状态变化。模型、case 集、trace schema 或 evaluator 版本不兼容时输出 `not_comparable`，抑制断言层回归结论，但保留 case 集变化；SUT revision 并列显示，允许用它作为被测版本变化维度。普通 run 不覆盖 baseline。
+
+增加 `gate score`：支持不伪装为真实评分的 `stub` 和基于 OpenAI-compatible Chat Completions API 的 `openai` / `deepseek` Judge；固定 rubric 为事实依据、回答请求、动作诚实度和表达清晰度。结果单独写 `.semantic.json`，记录 provider/model/rubric 版本、维度分数与理由。Judge 错误不视为通过，也不更改确定性 gate 状态。详见 [`docs/semantic-evaluation.md`](./docs/semantic-evaluation.md)。
+
+**边界：** 旧报告如 P5 前生成、缺少 `comparison_context`，不能被保存为 P6 baseline；真实 Judge 仍受模型随机性影响，本阶段未进行真实 judge API 运行或质量校准。
+
+## P7 执行记录（2026-11-09）
+
+增加 `.github/workflows/regression.yml`：PR、main push 和手动触发均运行 Python 3.12 下的完整 case 集，不需要模型密钥。工作流启动 `scripts/ci_mock_sut.py` 确定性 ChatKit fixture，通过 Gate 实际 adapter/runner/trace/evaluator/report/gate 路径执行；随后以 AIR-15 注入 unallowlisted tool call，要求 Gate 返回行为失败 exit code 1。正常报告、故意阻断报告和 fixture 日志在 `always()` 步骤中上传，并附入 job summary。
+
+另有手动 `.github/workflows/live-sut-smoke.yml`，按 `config/sut.lock.yaml` 中的固定 SUT SHA 检出 SUT，仅运行 AIR-01；需显式启用并配置 GitHub `DEEPSEEK_API_KEY` secret。该工作流可能产生模型费用，不属于 PR 检查。默认 fixture 是 Gate 管线的可重复契约验证，不代表真实模型行为表现。
+
+**验收状态：** 工作流与 fixture 已落库；需要推送后由 GitHub Actions 执行，才能获得真实 run 链接和 artifact。Required check / branch protection 仍须在 GitHub 仓库设置中启用，不能由工作流文件代替。
+
+## P8 执行记录（2026-11-09）
+
+重写 README 为测开视角，加入架构图、安装与 SUT 执行命令、显式 baseline 流程、语义评分配置、CI 两种执行模式、trace/case/安全文档入口、已完成范围和限制。补充 `docs/semantic-evaluation.md`、CLI diff/score 说明、baseline 管理约定和 CI fixture 说明。文档明确 PR 采用 mock fixture、live smoke 需要 DeepSeek secret 且可能计费；没有把 mock 运行包装成真实 SUT 通过证据。
+
+**验收状态：** 命令与当前 CLI 入口逐项对应。干净环境安装、GitHub Actions 的 pass/block 两次运行及 live smoke 成功记录，需要发布分支上的实际运行后补充链接；当前仓库文件本身不能证明远程 CI 已执行。
+
 ## 1. 目标、范围与完成定义
 
 ### 1.1 项目最终要证明什么
@@ -74,7 +96,7 @@
 
 ### 2.1 当前项目状态
 
-- P1–P5 的基础 CLI 评测链路已实现；P6 基线比较/语义评分、P7 CI、P8 演示打磨、P9 Web 前端、P10 多用户在线服务尚待开发。
+- P0–P8 的 CLI 评测闭环、比较/语义评分能力、确定性 CI 工作流及文档演示支架已实现；远程 Actions 验收证据、P9 Web 前端和 P10 多用户在线服务仍待完成。
 - 当前交付路线先形成 CLI + CI 的核心评测闭环；用户明确希望继续做 Web 前端，因此新增 P9 产品 UI/API，P10 在线产品部署与多用户能力仍需按目标用户确定范围。
 - SUT 是 `OpenAI CS Agents Demo`，航空客服场景只作为第一套样例用例。
 - 目前已有一次人工启动和请求验证记录；这不能替代可重复的自动化集成测试。
@@ -615,7 +637,7 @@ P9 前端排在 CLI/CI 核心 MVP 之后；对于“可操作 Web 产品”目�
 | ChatKit 流式协议实现复杂 | 集成时间被协议细节吞噬 | P2 独立 adapter；先完成最小一轮请求/状态读取，再扩展多轮 |
 | 缺少业务危险动作 | 无法证明越权/重复执行等规则 | 只对 SUT 确有动作和证据的规则计覆盖；必要时做明确隔离的测试工具替身，不伪称覆盖真实 SUT |
 | Judge 不稳定或误判 | 安全回归被主观评分掩盖 | Judge 单独报告；硬规则优先；异常状态不能默认通过 |
-| CI 只测 Gate 自己而未启动 SUT | 演示缺乏端到端说服力 | 工作流锁定并检出 SUT，实际启动并运行核心 suite |
+| PR CI 未连接真实 SUT | 默认检查只证明 Gate 管线，不证明真实模型行为 | PR 使用确定性 fixture 保证无密钥可复现；另设固定 SHA、显式密钥的手动真实 SUT smoke，并清楚区分两类证据 |
 | 报告泄露秘密或隐私 | 公开仓库暴露敏感数据 | 统一脱敏；审查 artifact；密钥只来自环境/Secrets |
 
 ## 9. 阶段验收总表
@@ -629,7 +651,7 @@ P9 前端排在 CLI/CI 核心 MVP 之后；对于“可操作 Web 产品”目�
 | P4 | 可校验的 case 数据、至少 15 条有效风险用例、确定性断言证据 |
 | P5 | 一条命令运行、两种报告、critical fail 返回非零 |
 | P6 | baseline diff 可解释，Judge 错误与硬规则失败互不混淆 |
-| P7 | CI 真正启动 SUT；故意回归能阻断；失败时 artifact 保留 |
+| P7 | PR workflow 对确定性 ChatKit fixture 运行端到端 Gate；故意回归能阻断；失败时 artifact 保留；另有固定 SHA 的手动真实 SUT smoke |
 | P8 | 干净环境复现、文档准确、演示链路完整 |
 | P9 | 浏览器触发评测，查看 run/trace/baseline，数据持久化且和 CLI 判定一致 |
 | P10 | 用户隔离、后台任务、托管数据库/对象存储、密钥与部署运维闭环 |

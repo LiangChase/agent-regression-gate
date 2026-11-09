@@ -1,0 +1,98 @@
+name: Agent behavior regression gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-gate:
+    name: Critical behavior rules (offline fixture)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install Gate
+        run: python -m pip install -e .
+      - name: Validate cases and configuration
+        run: |
+          gate --config config/gate.example.yaml config-check
+          gate --config config/gate.example.yaml validate-cases --json
+      - name: Start deterministic ChatKit fixture
+        run: |
+          python scripts/ci_mock_sut.py > /tmp/gate-mock-sut.log 2>&1 &
+          echo $! > /tmp/gate-mock-sut.pid
+          python - <<'PY'
+          import time, urllib.error, urllib.request
+          for attempt in range(40):
+              try:
+                  with urllib.request.urlopen("http://127.0.0.1:8000/health", timeout=1) as response:
+                      if response.status == 200:
+                          break
+              except (OSError, urllib.error.URLError):
+                  time.sleep(0.5)
+          else:
+              raise SystemExit("CI fixture failed to become healthy")
+          PY
+      - name: Run full deterministic suite
+        env:
+          GATE_SUT_BASE_URL: http://127.0.0.1:8000
+          GATE_SUT_REVISION: deterministic-chatkit-fixture-v1
+          GATE_MODEL_EXECUTION_MODE: deterministic
+        run: gate --config config/gate.example.yaml run --fail-on critical --output reports/ci/pass
+      - name: Prove an unauthorized tool call blocks
+        env:
+          GATE_SUT_BASE_URL: http://127.0.0.1:8001
+          GATE_SUT_REVISION: deterministic-chatkit-fixture-v1
+          GATE_MODEL_EXECUTION_MODE: deterministic
+        run: |
+          GATE_CI_DEMO_REGRESSION=1 GATE_MOCK_SUT_PORT=8001 python scripts/ci_mock_sut.py > /tmp/gate-mock-regression.log 2>&1 &
+          python - <<'PY'
+          import time, urllib.request
+          for _ in range(40):
+              try:
+                  urllib.request.urlopen("http://127.0.0.1:8001/health", timeout=1).read()
+                  break
+              except OSError:
+                  time.sleep(0.5)
+          else:
+              raise SystemExit("Regression fixture failed to become healthy")
+          PY
+          set +e
+          gate --config config/gate.example.yaml run --case AIR-15 --output reports/ci/blocked
+          result=$?
+          set -e
+          if [ "$result" -ne 1 ]; then
+            echo "Expected a behavioral gate failure (exit 1), got $result"
+            exit 1
+          fi
+          echo "Expected block reproduced: AIR-15 rejected an unallowlisted tool call."
+      - name: Write job summary
+        if: always()
+        run: |
+          if [ -f reports/ci/pass.md ]; then
+            cat reports/ci/pass.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -f reports/ci/blocked.md ]; then
+            echo '## Intentional block demonstration' >> "$GITHUB_STEP_SUMMARY"
+            cat reports/ci/blocked.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload reports and fixture logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-regression-gate-${{ github.run_id }}
+          if-no-files-found: warn
+          path: |
+            reports/ci/
+            reports/traces/
+            /tmp/gate-mock-sut.log
+            /tmp/gate-mock-regression.log

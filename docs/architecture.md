@@ -32,10 +32,10 @@ The CLI and CI invoke the same core directly. The future Web console will use th
 | `sut/` | ChatKit HTTP/SSE adapter, session boundary, and SUT lifecycle | P2 implemented |
 | `tracing/` | Trace normalization, completeness, persistence, redaction | P3 implemented |
 | `cases/` | Case schemas, loading, static validation | P4 implemented |
-| `evaluators/` | Deterministic assertions and optional semantic evaluation | P4 implemented / P6 planned |
+| `evaluators/` | Deterministic assertions and optional semantic evaluation | P4/P6 implemented |
 | `execution/` | Serial case and run orchestration | P5 implemented |
-| `comparison/` | Baseline diff and gate policy aggregation | P6 planned |
+| `comparison/` | Baseline compatibility checks and case/assertion diff | P6 implemented |
 | `reporting/` | Sanitized JSON and Markdown run reports | P5 implemented |
-| `cli.py` | Configuration, doctor, case validation, and run commands | P1–P5 |
+| `cli.py` | Configuration, doctor, case validation, run, baseline, compare and score commands | P1–P6 |
 
-P1–P5 implement the local CLI foundation: adapter, traces, cases, deterministic evaluators, serial execution, reports, and gate exit codes. Baseline comparison, semantic scoring, CI regression demonstration, and the Web/API product surface remain planned work.
+P0–P8 implement the CLI evaluation loop, optional semantic scoring, baseline comparison, deterministic fixture CI and documentation. The PR workflow exercises Gate end-to-end with a deterministic ChatKit fixture; the separate manual live smoke runs one case against the pinned SUT and may incur model cost. The Web/API product surface remains planned for P9.

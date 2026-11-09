@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import os
 import time
 from pathlib import Path
@@ -85,6 +87,7 @@ async def run_suite(
             "model_name": _model_name(config),
             "metadata_source": "Gate configuration/environment hint; externally managed SUT settings may differ",
         },
+        "comparison_context": _comparison_context(selected, revision, config),
         "summary": _summary(case_results),
         "gate": gate,
         "fail_on": fail_on,
@@ -270,4 +273,32 @@ def _model_name(config: GateConfig) -> str | None:
     if config.model.provider == "deepseek":
         return os.environ.get("DEEPSEEK_MODEL") or os.environ.get("LLM_MODEL") or "deepseek-flash"
     return os.environ.get("LLM_MODEL") or "gpt-5.2"
+
+
+def _comparison_context(cases: list[Case], revision: str | None, config: GateConfig) -> dict[str, Any]:
+    case_document = [
+        {
+            "id": case.id,
+            "version": case.version,
+            "turns": case.turns,
+            "rules": [
+                {"id": rule.id, "type": rule.type, "severity": rule.severity, "params": rule.params}
+                for rule in case.rules
+            ],
+        }
+        for case in sorted(cases, key=lambda item: item.id)
+    ]
+    digest = hashlib.sha256(json.dumps(case_document, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
+    return {
+        "case_set_fingerprint": digest,
+        "trace_schema_version": 1,
+        "evaluator_version": "deterministic-v1",
+        "gate_version": __version__,
+        "sut_revision": revision,
+        "model": {
+            "provider": config.model.provider,
+            "model_name": _model_name(config),
+            "execution_mode": config.model.execution_mode,
+        },
+    }
 

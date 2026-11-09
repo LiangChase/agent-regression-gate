@@ -1,3 +1,5 @@
 # Baselines
 
-P6 will add reviewed baseline run records here. Baselines are explicit comparison inputs; ordinary runs must not overwrite them. Keep only sanitized, reproducible artifacts in Git. Machine-local baselines belong under `baselines/local/`, which is ignored.
+Save an explicitly reviewed, sanitized run with `gate baseline save`; a normal `gate run` never replaces one. The save command stores a versioned envelope containing the report, timestamp and required review reason. Review the diff output before updating an established baseline.
+
+Machine-local baselines belong under `baselines/local/`, which is ignored. Commit only sanitized baseline artifacts that are useful as shared project evidence. Do not commit secrets, sensitive prompts, customer data or unreviewed live-model outputs.
