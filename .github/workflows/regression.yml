@@ -26,8 +26,19 @@ jobs:
         with:
           python-version: "3.12"
       - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
       - name: Install Gate
         run: uv sync --locked --no-dev
+      - name: Build the Web console
+        working-directory: web
+        run: |
+          npm ci
+          npm run typecheck
+          npm run build
       - name: Validate cases and configuration
         run: |
           uv run gate --config config/gate.example.yaml config-check

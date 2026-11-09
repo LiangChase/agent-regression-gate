@@ -23,6 +23,11 @@ config/gate.yaml
 # Local execution artifacts
 reports/**
 !reports/.gitkeep
+data/
+web/node_modules/
+web/.next/
+web/.env.local
+*.tsbuildinfo
 baselines/local/**
 *.trace.json
 *.trace.jsonl

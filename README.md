@@ -11,6 +11,7 @@
 - 显式保存经过审阅的 baseline，比较新增失败、修复、持续失败和不可比较项。
 - 可选地运行语义 Judge，评估事实依据、问题响应、动作诚实度和表达清晰度。Judge 结果仅作建议，不能覆盖 critical 确定性失败。
 - 在 GitHub Actions 中无模型密钥地复现确定性通过和越权工具调用阻断，并保留报告 artifact。
+- 使用单用户本地 Web 控制台浏览用例与运行、触发回归、查看 trace、下载报告和审核基线。
 
 ## 架构
 
@@ -95,6 +96,27 @@ gate --config config/gate.example.yaml score --report reports/runs/<run-id>.json
 
 需要真实模型 smoke 时，手动运行 `Live SUT smoke` workflow，并显式勾选开关、配置 GitHub `DEEPSEEK_API_KEY` secret。它只对锁定的 SUT SHA 执行 AIR-01；该调用会产生模型费用，不是普通 PR required check。
 
+## 本地 Web 控制台（P9）
+
+需要 Python 3.12+、Node.js 20.9+ 和 npm。首次在仓库根目录同步 Gate 环境并启动 API：
+
+```powershell
+uv sync --locked --no-dev
+uv run gate --config config/gate.example.yaml serve
+```
+
+另开一个终端启动前端（首次执行 `npm ci` 安装锁定依赖）：
+
+```powershell
+cd web
+npm ci
+npm run dev
+```
+
+浏览器打开 `http://127.0.0.1:3000`；API 文档在 `http://127.0.0.1:8001/api/docs`。Gate API 和 Next.js 均绑定 loopback。本地状态元数据保存在 `data/gate.sqlite3`，报告与 trace 仍按既有配置写入 `reports/`。重启可恢复已完成的历史；服务重启时尚未完成的任务会被标记为错误，不会自动重放可能带副作用的 SUT 请求。
+
+控制台不会编辑用例 YAML，也不会保存 API key；需要启动真实 SUT 时，按 SUT 契约单独配置和启动 SUT。尚未配置模型密钥时，SUT 仍可能无法执行真实模型请求。API 和页面流程见 [P9 API 契约](docs/api-contract.md) 与 [控制台流程](docs/web-console-flow.md)。
+
 ## Case、Trace 与数据安全
 
 - Case 规则和静态校验：[`docs/cases.md`](docs/cases.md)
@@ -105,8 +127,8 @@ gate --config config/gate.example.yaml score --report reports/runs/<run-id>.json
 - 架构和模块边界：[`docs/architecture.md`](docs/architecture.md)
 - 分阶段计划与执行记录：[`agent-regression-gate-phase-plan.md`](agent-regression-gate-phase-plan.md)
 
-密钥只从环境变量或 CI secrets 注入。Trace/report 对隐私字段做脱敏；提交前仍应检查人工提供的文本、SUT 输出和 baseline。Gate 目前是单机 CLI + CI 工具，不含 Web UI、账户系统、云数据库或常驻服务。
+密钥只从环境变量或 CI secrets 注入。Trace/report 对隐私字段做脱敏；提交前仍应检查人工提供的文本、SUT 输出和 baseline。P9 是 loopback 单用户本地控制台，不含账户系统或云数据库；多用户公网服务需先落实 P10 的认证、权限与部署安全设计。
 
 ## 已实现与限制
 
-P0–P8 覆盖本地执行、trace、确定性评估、报告、比较、可选 Judge 和 CI 演示。PR fixture 为确定性契约样例；实时航空 Agent 输出仍受外部模型及其配置影响。Judge 质量需要结合模型、rubric 和人工抽查评估。P9 规划单用户 Web 控制台；P10 再评估持久化在线部署和多用户能力。
+P0–P9 覆盖本地执行、Web 控制台、trace、确定性评估、报告、比较、可选 Judge 和 CI 演示。PR fixture 为确定性契约样例；实时航空 Agent 输出仍受外部模型及其配置影响。Judge 质量需要结合模型、rubric 和人工抽查评估。P10 再评估持久化在线部署和多用户能力。

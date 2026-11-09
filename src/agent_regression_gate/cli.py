@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import re
 import sys
 import tempfile
@@ -76,6 +77,10 @@ def build_parser() -> argparse.ArgumentParser:
     score.add_argument("--provider", choices=("stub", "openai", "deepseek"), default="stub")
     score.add_argument("--model", help="Judge model; defaults to the provider's recommended model.")
     score.add_argument("--output", help="Output JSON path (default: <report>.semantic.json).")
+
+    serve = subparsers.add_parser("serve", help="Start the loopback-only local web API.")
+    serve.add_argument("--port", type=int, default=8001, help="Loopback API port (default: 8001).")
+    serve.add_argument("--reload", action="store_true", help="Restart the API when Python files change.")
     return parser
 
 
@@ -190,6 +195,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             })
             print(f"Semantic scoring: {target}")
             return 10 if any(item.get("status") == "error" for item in scores) else 0
+        if args.command == "serve":
+            if not 1 <= args.port <= 65535:
+                raise ConfigurationError("API port must be between 1 and 65535.")
+            if config.config_path:
+                os.environ["GATE_CONFIG"] = str(config.config_path)
+            import uvicorn
+            uvicorn.run(
+                "agent_regression_gate.api.app:app",
+                host="127.0.0.1",
+                port=args.port,
+                reload=args.reload,
+                log_level=config.logging.level.lower(),
+            )
+            return 0
     except GateError as exc:
         print(f"ERROR[{exc.category.value}]: {exc.message}", file=sys.stderr)
         return exc.exit_code

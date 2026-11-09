@@ -8,7 +8,12 @@ version = "0.1.0"
 description = "Regression gate infrastructure for validating agent behavior rules."
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["PyYAML>=6.0,<7", "httpx>=0.27,<1"]
+dependencies = [
+    "PyYAML>=6.0,<7",
+    "httpx>=0.27,<1",
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.30,<1",
+]
 
 [project.scripts]
 gate = "agent_regression_gate.cli:main"

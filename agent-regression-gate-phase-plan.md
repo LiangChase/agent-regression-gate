@@ -96,8 +96,8 @@
 
 ### 2.1 当前项目状态
 
-- P0–P8 的 CLI 评测闭环、比较/语义评分能力、确定性 CI 工作流及文档演示支架已实现，并有远程 Actions 绿色/红色验收记录；main 分支保护属于待所有者确认的仓库设置；P9 Web 前端和 P10 多用户在线服务仍待完成。
-- 当前交付路线先形成 CLI + CI 的核心评测闭环；用户明确希望继续做 Web 前端，因此新增 P9 产品 UI/API，P10 在线产品部署与多用户能力仍需按目标用户确定范围。
+- P0–P9 的 CLI/Web 评测闭环、比较/语义评分能力、确定性 CI 工作流及文档演示支架已实现，并有远程 Actions 绿色/红色验收记录；main 分支保护属于待所有者确认的仓库设置；P10 多用户在线服务仍待完成。
+- 当前交付包含 CLI + CI 核心闭环和 loopback 单用户 Web 控制台；P10 在线产品部署与多用户能力仍需按目标用户确定范围。
 - SUT 是 `OpenAI CS Agents Demo`，航空客服场景只作为第一套样例用例。
 - 目前已有一次人工启动和请求验证记录；这不能替代可重复的自动化集成测试。
 - SUT 对应版本应在开始实现时重新核实并锁定到 commit SHA。当前参考版本：`b4fa4678cd0bace97981ed33e4e2f31acd379c8f`。CI 不应跟随一个会移动的分支尖端。
@@ -667,3 +667,11 @@ P9 前端排在 CLI/CI 核心 MVP 之后；对于“可操作 Web 产品”目�
 7. 核心 CLI/CI 演示稳定后，进入 P9 做 Web 控制台；P10 只在确定多用户/公网目标后投入。
 
 > 阶段实际完成后，应更新本文件或另建进度记录，标明完成日期、提交 SHA、验证命令和证据链接；不要仅凭代码已写就标记完成。
+
+## P9 执行记录（2026-11-09）
+
+实现 `web/` Next.js + TypeScript 单用户控制台和 `src/agent_regression_gate/api/` FastAPI 服务。控制台包括 dashboard、run 列表与状态轮询、case 浏览/筛选、异步启动评测、断言/trace 查看、报告下载、baseline 审核提升与兼容性对比，以及 SUT 地址、revision、超时和执行模式的本机配置。配置覆盖与 run 元数据保存在本地 SQLite；Trace/报告仍经既有 runner 写入脱敏文件。用例 YAML 不在 UI 中编辑，API 与 Next 前端只绑定 loopback，同源代理转发；密钥不写入浏览器或 API 响应。未引入 PostgreSQL/云端数据库、账号或匿名公网部署。
+
+补充 [`docs/api-contract.md`](./docs/api-contract.md)、[`docs/web-console-flow.md`](./docs/web-console-flow.md)，更新 README 启动方式和架构说明；API 由 `gate serve` 命令启动。
+
+**验收状态：** `npm run typecheck`、Next.js production build、Python 3.12 CLI help/config-check 成功。Loopback 集成 smoke 使用现有确定性 fixture 和真实 runner 执行 AIR-01，检查 run/report/trace、baseline 显式保存、diff 下载、dashboard，并重启 API 后确认历史记录仍在；结果 PASS。P9 仅是本地单用户演示版；公网、认证、多用户、任务队列、取消运行和托管数据库留在 P10。

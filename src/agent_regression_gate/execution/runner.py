@@ -33,6 +33,7 @@ async def run_suite(
     *,
     fail_on: str = "critical",
     output: str | Path | None = None,
+    run_id: str | None = None,
 ) -> tuple[dict[str, Any], Path, Path]:
     selected = list(cases)
     if not selected:
@@ -41,7 +42,7 @@ async def run_suite(
         raise ValueError(f"Unsupported fail-on policy '{fail_on}'.")
 
     started = utc_now()
-    run_id = new_id()
+    run_id = run_id or new_id()
     revision = _sut_revision()
     adapter = ChatKitAdapter(config.sut)
     lifecycle = SutLifecycle(config.sut, adapter)
