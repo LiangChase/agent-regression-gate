@@ -4,6 +4,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 import asyncio
+import functools
 import json
 from typing import Any, AsyncIterator, Dict, List, Optional
 from uuid import uuid4
@@ -92,6 +93,44 @@ def _get_guardrail_name(g) -> str:
     if isinstance(fn_name, str) and fn_name:
         return fn_name.replace("_", " ").title()
     return str(g)
+
+
+def _find_handoff_callback(handoff: Handoff, max_depth: int = 5) -> Any:
+    """Best-effort lookup of the ``on_handoff`` callback for a handoff.
+
+    Newer Agents SDK releases wrap ``on_invoke_handoff`` in ``functools.partial``,
+    so the callback is no longer reachable via ``on_invoke_handoff.__code__``.
+    Walk partials and closures defensively; this is display-only metadata.
+    """
+
+    def find(candidate: Any, depth: int) -> Any:
+        if candidate is None or depth > max_depth:
+            return None
+        if isinstance(candidate, functools.partial):
+            parts = [candidate.func, *candidate.args, *(candidate.keywords or {}).values()]
+            for part in parts:
+                found = find(part, depth + 1)
+                if found is not None:
+                    return found
+            return None
+        code = getattr(candidate, "__code__", None)
+        closure = getattr(candidate, "__closure__", None) or []
+        if code is None or not closure:
+            return None
+        try:
+            if "on_handoff" not in code.co_freevars:
+                return None
+            index = code.co_freevars.index("on_handoff")
+            if index < len(closure):
+                return closure[index].cell_contents
+        except (ValueError, AttributeError):
+            return None
+        return None
+
+    try:
+        return find(getattr(handoff, "on_invoke_handoff", None), 0)
+    except Exception:
+        return None
 
 
 def _build_agents_list() -> List[Dict[str, Any]]:
@@ -267,23 +306,18 @@ class AirlineServer(ChatKitServer[dict[str, Any]]):
                     None,
                 )
                 if ho:
-                    fn = ho.on_invoke_handoff
-                    fv = fn.__code__.co_freevars
-                    cl = fn.__closure__ or []
-                    if "on_handoff" in fv:
-                        idx = fv.index("on_handoff")
-                        if idx < len(cl) and cl[idx].cell_contents:
-                            cb = cl[idx].cell_contents
-                            cb_name = getattr(cb, "__name__", repr(cb))
-                            events.append(
-                                AgentEvent(
-                                    id=uuid4().hex,
-                                    type="tool_call",
-                                    agent=to_agent.name,
-                                    content=cb_name,
-                                    timestamp=now_ms,
-                                )
+                    cb = _find_handoff_callback(ho)
+                    if cb is not None:
+                        cb_name = getattr(cb, "__name__", repr(cb))
+                        events.append(
+                            AgentEvent(
+                                id=uuid4().hex,
+                                type="tool_call",
+                                agent=to_agent.name,
+                                content=cb_name,
+                                timestamp=now_ms,
                             )
+                        )
 
                 active_agent = to_agent.name
             elif isinstance(item, ToolCallItem):

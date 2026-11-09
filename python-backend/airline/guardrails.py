@@ -27,10 +27,62 @@ def _parse_guardrail_output(raw: object, output_type: type[BaseModel]) -> BaseMo
         return output_type.model_validate(raw)
     if not isinstance(raw, str):
         raise ValueError("Guardrail model returned a non-text result")
-    match = re.search(r"\{.*\}", raw, flags=re.DOTALL)
+    text = raw.strip()
+    if text.startswith("```"):
+        text = re.sub(
+            r"^```(?:json)?\s*|\s*```$", "", text, flags=re.IGNORECASE | re.DOTALL
+        ).strip()
+    try:
+        return output_type.model_validate_json(text)
+    except Exception:
+        pass
+    match = re.search(r"\{.*\}", text, flags=re.DOTALL)
     if match is None:
         raise ValueError("Guardrail model did not return JSON")
     return output_type.model_validate_json(match.group(0))
+
+
+def _latest_user_text(input: str | list[TResponseInputItem]) -> str:
+    """Extract the most recent user message from a run input list."""
+    if isinstance(input, str):
+        return input
+    for item in reversed(input):
+        if not isinstance(item, dict) or item.get("role") != "user":
+            continue
+        content = item.get("content")
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            parts = [
+                part.get("text", "")
+                for part in content
+                if isinstance(part, dict) and isinstance(part.get("text"), str)
+            ]
+            text = "".join(parts)
+            if text:
+                return text
+    return ""
+
+
+async def _run_guardrail(
+    agent: Agent,
+    input: str | list[TResponseInputItem],
+    context: object,
+    output_type: type[BaseModel],
+    attempts: int = 2,
+) -> BaseModel:
+    """Run a guardrail model and parse its JSON, retrying on malformed output."""
+    # Guardrails only evaluate the latest user message. Passing the whole
+    # conversation makes some providers answer the user instead of emitting JSON.
+    guardrail_input: str | list[TResponseInputItem] = _latest_user_text(input) or input
+    last_error: Exception | None = None
+    for _ in range(attempts):
+        result = await Runner.run(agent, guardrail_input, context=context)
+        try:
+            return _parse_guardrail_output(result.final_output, output_type)
+        except Exception as err:
+            last_error = err
+    raise ValueError("Could not parse guardrail response") from last_error
 
 
 class RelevanceOutput(BaseModel):
@@ -60,13 +112,9 @@ async def relevance_guardrail(
     context: RunContextWrapper[None], agent: Agent, input: str | list[TResponseInputItem]
 ) -> GuardrailFunctionOutput:
     """Check whether input is relevant to airline topics."""
-    result = await Runner.run(
-        guardrail_agent,
-        input,
-        context=context.context.state if hasattr(context.context, "state") else context.context,
-    )
+    context_obj = context.context.state if hasattr(context.context, "state") else context.context
     try:
-        final = _parse_guardrail_output(result.final_output, RelevanceOutput)
+        final = await _run_guardrail(guardrail_agent, input, context_obj, RelevanceOutput)
     except Exception:
         final = RelevanceOutput(reasoning="Could not parse guardrail response", is_relevant=False)
     return GuardrailFunctionOutput(output_info=final, tripwire_triggered=not final.is_relevant)
@@ -101,13 +149,9 @@ async def jailbreak_guardrail(
     context: RunContextWrapper[None], agent: Agent, input: str | list[TResponseInputItem]
 ) -> GuardrailFunctionOutput:
     """Check whether input attempts to bypass the agent's instructions."""
-    result = await Runner.run(
-        jailbreak_guardrail_agent,
-        input,
-        context=context.context.state if hasattr(context.context, "state") else context.context,
-    )
+    context_obj = context.context.state if hasattr(context.context, "state") else context.context
     try:
-        final = _parse_guardrail_output(result.final_output, JailbreakOutput)
+        final = await _run_guardrail(jailbreak_guardrail_agent, input, context_obj, JailbreakOutput)
     except Exception:
         final = JailbreakOutput(reasoning="Could not parse guardrail response", is_safe=False)
     return GuardrailFunctionOutput(output_info=final, tripwire_triggered=not final.is_safe)
