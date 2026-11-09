@@ -113,7 +113,7 @@ npm ci
 npm run dev
 ```
 
-浏览器打开 `http://127.0.0.1:3000`；API 文档在 `http://127.0.0.1:8001/api/docs`。Gate API 和 Next.js 均绑定 loopback。本地状态元数据保存在 `data/gate.sqlite3`，报告与 trace 仍按既有配置写入 `reports/`。重启可恢复已完成的历史；服务重启时尚未完成的任务会被标记为错误，不会自动重放可能带副作用的 SUT 请求。
+浏览器打开 `http://127.0.0.1:3002`；API 文档在 `http://127.0.0.1:8001/api/docs`。Gate API 和 Next.js 均绑定 loopback。本地状态元数据保存在 `data/gate.sqlite3`，报告与 trace 仍按既有配置写入 `reports/`。重启可恢复已完成的历史；服务重启时尚未完成的任务会被标记为错误，不会自动重放可能带副作用的 SUT 请求。
 
 控制台不会编辑用例 YAML，也不会保存 API key；需要启动真实 SUT 时，按 SUT 契约单独配置和启动 SUT。尚未配置模型密钥时，SUT 仍可能无法执行真实模型请求。API 和页面流程见 [P9 API 契约](docs/api-contract.md) 与 [控制台流程](docs/web-console-flow.md)。
 
