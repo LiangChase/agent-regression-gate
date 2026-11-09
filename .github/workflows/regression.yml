@@ -60,6 +60,8 @@ jobs:
           GATE_SUT_REVISION: deterministic-chatkit-fixture-v1
           GATE_MODEL_EXECUTION_MODE: deterministic
         run: |
+          gate --config config/gate.example.yaml --sut-base-url http://127.0.0.1:8000 run --case AIR-15 --output reports/ci/air15-pass
+          gate --config config/gate.example.yaml baseline save --report reports/ci/air15-pass.json --name ci-air15 --reason "Deterministic fixture pass used for the intentional AIR-15 regression demo"
           GATE_CI_DEMO_REGRESSION=1 GATE_MOCK_SUT_PORT=8001 python scripts/ci_mock_sut.py > /tmp/gate-mock-regression.log 2>&1 &
           python - <<'PY'
           import time, urllib.request
@@ -80,6 +82,7 @@ jobs:
             echo "Expected a behavioral gate failure (exit 1), got $result"
             exit 1
           fi
+          gate --config config/gate.example.yaml compare --baseline ci-air15 --current reports/ci/blocked.json --output reports/ci/diff
           echo "Expected block reproduced: AIR-15 rejected an unallowlisted tool call."
       - name: Write job summary
         if: always()
