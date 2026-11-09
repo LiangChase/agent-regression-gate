@@ -675,3 +675,5 @@ P9 前端排在 CLI/CI 核心 MVP 之后；对于“可操作 Web 产品”目�
 补充 [`docs/api-contract.md`](./docs/api-contract.md)、[`docs/web-console-flow.md`](./docs/web-console-flow.md)，更新 README 启动方式和架构说明；API 由 `gate serve` 命令启动。
 
 **验收状态：** `npm run typecheck`、Next.js production build、Python 3.12 CLI help/config-check 成功。Loopback 集成 smoke 使用现有确定性 fixture 和真实 runner 执行 AIR-01，检查 run/report/trace、baseline 显式保存、diff 下载、dashboard，并重启 API 后确认历史记录仍在；结果 PASS。P9 仅是本地单用户演示版；公网、认证、多用户、任务队列、取消运行和托管数据库留在 P10。
+
+**实现提交：** `3d146d2`（`Add local web console for agent evaluation runs`）。验收命令：`uv lock --check`、Python 3.12 `compileall`、CLI `config-check`/`serve` smoke、loopback fixture API smoke、`npm ci`、`npm run typecheck`、`npm run build`。
