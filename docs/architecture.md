@@ -38,4 +38,4 @@ The CLI and CI invoke the same core directly. The future Web console will use th
 | `reporting/` | Sanitized JSON and Markdown run reports | P5 implemented |
 | `cli.py` | Configuration, doctor, case validation, run, baseline, compare and score commands | P1–P6 |
 
-P0–P8 implement the CLI evaluation loop, optional semantic scoring, baseline comparison, deterministic fixture CI and documentation. The PR workflow exercises Gate end-to-end with a deterministic ChatKit fixture; the separate manual live smoke runs one case against the pinned SUT and may incur model cost. The Web/API product surface remains planned for P9.
+P0–P8 implement the CLI evaluation loop, optional semantic scoring, baseline comparison, deterministic fixture CI and documentation. The PR workflow exercises Gate end-to-end with a deterministic ChatKit fixture; its opt-in negative control deliberately produces a red run and retains evidence. The separate manual live smoke runs one case against the pinned SUT and may incur model cost. The Web/API product surface remains planned for P9.

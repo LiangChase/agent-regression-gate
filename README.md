@@ -91,7 +91,7 @@ gate --config config/gate.example.yaml score --report reports/runs/<run-id>.json
 
 ## CI
 
-`Agent behavior regression gate` 工作流不依赖 API key：它启动仓库内的确定性 ChatKit fixture，运行完整 case 集，并以 `AIR-15` 越权工具调用重现一次预期阻断。通过与故意阻断的报告都会作为 artifact 上传。Fixture 只验证 Gate 的协议、trace、evaluator、报告和退出码链路，不代表真实模型通过率。
+`Agent behavior regression gate` 工作流不依赖 API key：它启动仓库内的确定性 ChatKit fixture，运行完整 case 集，并以 `AIR-15` 越权工具调用验证 Gate 能阻断。通过与负向控制的报告都会作为 artifact 上传。手动触发时可勾选 `demonstrate_regression`，该 run 会因预期的 AIR-15 critical failure 变红，且仍上传失败证据。Fixture 只验证 Gate 的协议、trace、evaluator、报告和退出码链路，不代表真实模型通过率。
 
 需要真实模型 smoke 时，手动运行 `Live SUT smoke` workflow，并显式勾选开关、配置 GitHub `DEEPSEEK_API_KEY` secret。它只对锁定的 SUT SHA 执行 AIR-01；该调用会产生模型费用，不是普通 PR required check。
 

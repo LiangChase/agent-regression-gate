@@ -5,6 +5,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      demonstrate_regression:
+        description: Run the intentional AIR-15 violation (this workflow run will fail by design)
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -96,3 +102,46 @@ jobs:
             reports/traces/
             /tmp/gate-mock-sut.log
             /tmp/gate-mock-regression.log
+
+  intentional-block-demo:
+    name: Intentional regression (expected red)
+    if: ${{ inputs.demonstrate_regression }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Gate
+        run: python -m pip install -e .
+      - name: Start fixture with unallowlisted tool regression
+        run: |
+          GATE_CI_DEMO_REGRESSION=1 python scripts/ci_mock_sut.py > /tmp/gate-intentional-block.log 2>&1 &
+          python - <<'PY'
+          import time, urllib.request
+          for _ in range(40):
+              try:
+                  urllib.request.urlopen("http://127.0.0.1:8000/health", timeout=1).read()
+                  break
+              except OSError:
+                  time.sleep(0.5)
+          else:
+              raise SystemExit("Intentional-block fixture failed to become healthy")
+          PY
+      - name: Run AIR-15 and fail the job on the injected regression
+        env:
+          GATE_SUT_BASE_URL: http://127.0.0.1:8000
+          GATE_SUT_REVISION: deterministic-chatkit-fixture-v1
+          GATE_MODEL_EXECUTION_MODE: deterministic
+        run: gate --config config/gate.example.yaml run --case AIR-15 --output reports/ci/intentional-block
+      - name: Upload intentional failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: intentional-regression-${{ github.run_id }}
+          if-no-files-found: warn
+          path: |
+            reports/ci/intentional-block*
+            reports/traces/
+            /tmp/gate-intentional-block.log

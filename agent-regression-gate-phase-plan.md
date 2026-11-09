@@ -56,13 +56,13 @@
 
 另有手动 `.github/workflows/live-sut-smoke.yml`，按 `config/sut.lock.yaml` 中的固定 SUT SHA 检出 SUT，仅运行 AIR-01；需显式启用并配置 GitHub `DEEPSEEK_API_KEY` secret。该工作流可能产生模型费用，不属于 PR 检查。默认 fixture 是 Gate 管线的可重复契约验证，不代表真实模型行为表现。
 
-**验收状态：** 工作流与 fixture 已落库；需要推送后由 GitHub Actions 执行，才能获得真实 run 链接和 artifact。Required check / branch protection 仍须在 GitHub 仓库设置中启用，不能由工作流文件代替。
+**验收状态：** 推送 commit `1e81af46527489960d1791899a04dff1ddb57ac5` 后，GitHub Actions run [42552577639](https://github.com/LiangChase/agent-regression-gate/actions/runs/42552577639) 已 success；steps 显示完整 deterministic suite、AIR-15 blocking probe、job summary 和 artifact upload 均 success，artifact `agent-regression-gate-42552577639` 已生成。该 run 验证了负向断言确实返回 exit code 1，但整体 job 有意保持绿色。现增加 `demonstrate_regression=true` 的手动负向控制 job，用于生成真实红色 Actions 记录并在失败时上传 artifact；其运行证据需该更新推送后取得。Required check / branch protection 仍须在 GitHub 仓库设置中启用，不能由工作流文件代替。
 
 ## P8 执行记录（2026-11-09）
 
 重写 README 为测开视角，加入架构图、安装与 SUT 执行命令、显式 baseline 流程、语义评分配置、CI 两种执行模式、trace/case/安全文档入口、已完成范围和限制。补充 `docs/semantic-evaluation.md`、CLI diff/score 说明、baseline 管理约定和 CI fixture 说明。文档明确 PR 采用 mock fixture、live smoke 需要 DeepSeek secret 且可能计费；没有把 mock 运行包装成真实 SUT 通过证据。
 
-**验收状态：** 命令与当前 CLI 入口逐项对应。干净环境安装、GitHub Actions 的 pass/block 两次运行及 live smoke 成功记录，需要发布分支上的实际运行后补充链接；当前仓库文件本身不能证明远程 CI 已执行。
+**验收状态：** 命令与当前 CLI 入口逐项对应；本地 Python 3.12 环境已通过 compileall、config/case CLI 校验和无模型端到端 fixture 执行。GitHub Actions pass run 链接见 P7；真实红色 negative-control run 和 live SUT smoke 分别需手动 dispatch，后者还需 DeepSeek secret。
 
 ## 1. 目标、范围与完成定义
 
