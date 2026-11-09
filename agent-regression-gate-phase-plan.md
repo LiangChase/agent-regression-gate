@@ -56,13 +56,13 @@
 
 另有手动 `.github/workflows/live-sut-smoke.yml`，按 `config/sut.lock.yaml` 中的固定 SUT SHA 检出 SUT，仅运行 AIR-01；需显式启用并配置 GitHub `DEEPSEEK_API_KEY` secret。该工作流可能产生模型费用，不属于 PR 检查。默认 fixture 是 Gate 管线的可重复契约验证，不代表真实模型行为表现。
 
-**验收状态：** 推送 commit `1e81af46527489960d1791899a04dff1ddb57ac5` 后，GitHub Actions run [42552577639](https://github.com/LiangChase/agent-regression-gate/actions/runs/42552577639) 已 success；steps 显示完整 deterministic suite、AIR-15 blocking probe、job summary 和 artifact upload 均 success，artifact `agent-regression-gate-42552577639` 已生成。该 run 验证了负向断言确实返回 exit code 1，但整体 job 有意保持绿色。现增加 `demonstrate_regression=true` 的手动负向控制 job，用于生成真实红色 Actions 记录并在失败时上传 artifact；其运行证据需该更新推送后取得。Required check / branch protection 仍须在 GitHub 仓库设置中启用，不能由工作流文件代替。
+**验收状态：** Python 固定为 3.12；新增 `uv.lock` 与 `uv sync --locked --no-dev` 锁定 Gate 运行依赖。本轮锁定依赖改动尚待 GitHub Actions 重新执行。此前未锁定安装版本的工作流 run [42553157226](https://github.com/LiangChase/agent-regression-gate/actions/runs/42553157226) 已证明 full suite、pass/block probe、baseline diff 和 artifact upload 成功；同一版本负向 run [42553248151](https://github.com/LiangChase/agent-regression-gate/actions/runs/42553248151) 因 AIR-15 critical failure 变红，失败步骤后的 artifact upload 成功。新锁定工作流通过后再更新最终证据。Required check / branch protection 仍须在 GitHub 仓库设置中启用，不能由工作流文件代替。
 
 ## P8 执行记录（2026-11-09）
 
 重写 README 为测开视角，加入架构图、安装与 SUT 执行命令、显式 baseline 流程、语义评分配置、CI 两种执行模式、trace/case/安全文档入口、已完成范围和限制。补充 `docs/semantic-evaluation.md`、CLI diff/score 说明、baseline 管理约定和 CI fixture 说明。文档明确 PR 采用 mock fixture、live smoke 需要 DeepSeek secret 且可能计费；没有把 mock 运行包装成真实 SUT 通过证据。
 
-**验收状态：** 命令与当前 CLI 入口逐项对应；本地 Python 3.12 环境已通过 compileall、config/case CLI 校验和无模型端到端 fixture 执行。GitHub Actions pass run 链接见 P7；真实红色 negative-control run 和 live SUT smoke 分别需手动 dispatch，后者还需 DeepSeek secret。
+**验收状态：** 命令与当前 CLI 入口逐项对应；本地 Python 3.12 环境已通过 compileall、config/case CLI 校验、锁定依赖安装和无模型端到端 fixture 执行。GitHub Actions pass 与真实红色 negative-control run 均有链接见 P7；真实航空 SUT smoke 尚未执行，需要手动 dispatch 和 DeepSeek secret。
 
 ## 1. 目标、范围与完成定义
 
@@ -96,7 +96,7 @@
 
 ### 2.1 当前项目状态
 
-- P0–P8 的 CLI 评测闭环、比较/语义评分能力、确定性 CI 工作流及文档演示支架已实现；远程 Actions 验收证据、P9 Web 前端和 P10 多用户在线服务仍待完成。
+- P0–P8 的 CLI 评测闭环、比较/语义评分能力、确定性 CI 工作流及文档演示支架已实现，并有远程 Actions 绿色/红色验收记录；P9 Web 前端和 P10 多用户在线服务仍待完成。
 - 当前交付路线先形成 CLI + CI 的核心评测闭环；用户明确希望继续做 Web 前端，因此新增 P9 产品 UI/API，P10 在线产品部署与多用户能力仍需按目标用户确定范围。
 - SUT 是 `OpenAI CS Agents Demo`，航空客服场景只作为第一套样例用例。
 - 目前已有一次人工启动和请求验证记录；这不能替代可重复的自动化集成测试。
@@ -397,19 +397,19 @@ P0–P5 组成最小可用的 CLI 本地闭环，P7 形成 CI 回归门禁。P9 
 **任务模块**
 
 1. **依赖与版本固定**
-   - 选定支持版本的 Python，并锁定 Gate 依赖；SUT 使用锁定 revision 和自身依赖策略。
+   - 选定支持版本的 Python，并用 `uv.lock` / `uv sync --locked` 锁定 Gate 依赖；SUT 使用锁定 revision 和自身依赖策略。
    - 不依赖开发者本地 `.env`、未提交文件或个人模型额度才能通过默认 PR 流程。
 2. **工作流设计**
-   - checkout Gate 分支，并单独 checkout `sut.lock.yaml` 指定的 SUT revision（或使用已发布、哈希固定的镜像）。
-   - 安装依赖、启动 SUT、等待健康、运行 critical suite、上传报告与日志摘要。
+   - 普通 PR 使用确定性 ChatKit fixture，避免模型 API 额度和随机性；另设手动 workflow checkout `sut.lock.yaml` 指定的真实 SUT revision。
+   - 默认工作流安装锁定依赖、启动 fixture、等待健康、运行完整 case suite、生成 baseline diff，并上传报告与日志摘要。
    - 报告 artifact 使用 `if: always()` 语义，保证 gate 失败仍可下载诊断材料。
    - 为真实模型 smoke 建独立手动/定时工作流，密钥只放 GitHub Secrets，默认不作为普通 PR 必须项。
 3. **失败策略与摘要**
    - critical 行为回归令 job 失败；基础设施故障同样阻止但显示不同分类和排查建议。
    - 在 job summary 中列出失败 case、失败规则、trace/report artifact 路径。
 4. **阻断演示**
-   - 制作可切换的演示回归（例如期望工具不调用却触发工具，或关键调用次数超限），确认 CI 因行为断言失败。
-   - 恢复正确行为后重新执行通过；记录两次 run 链接或截图供作品集展示。
+   - 以 AIR-15 可控注入的 unallowlisted tool call 演示行为断言阻断；普通工作流通过期望 exit code 1 的 probe 验证拦截逻辑。
+   - 手动输入 `demonstrate_regression=true` 触发专用 negative-control job，产生真实红色 run；正常 push/PR 工作流验证修复版本通过。记录 run 链接和 artifact。
 
 **交付物**
 
@@ -419,8 +419,8 @@ P0–P5 组成最小可用的 CLI 本地闭环，P7 形成 CI 回归门禁。P9 
 
 **验收条件**
 
-- 在 CI 环境可自动启动 SUT 并完成默认核心用例。
-- 注入演示回归后 required check 返回失败，报告 artifact 仍然存在。
+- CI 默认可启动确定性 ChatKit fixture 并完成核心用例；手动 live workflow 可启动固定 SHA 的真实 SUT。
+- 注入演示回归后 Gate 返回失败，negative-control job 变红，报告 artifact 仍然存在；正常 CI 通过。
 - 恢复后检查通过；没有密钥的普通 PR 仍可运行核心门禁。
 - SUT 或 Gate 的版本变化能从报告中追溯。
 

@@ -27,13 +27,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
       - name: Require configured DeepSeek secret
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: test -n "$DEEPSEEK_API_KEY" || (echo "Set repository secret DEEPSEEK_API_KEY before enabling the paid smoke." && exit 1)
       - name: Install Gate and pinned SUT dependencies
         run: |
-          python -m pip install -e .
+          uv sync --locked --no-dev
           python -m pip install -r sut/python-backend/requirements.txt
       - name: Start pinned SUT
         env:
@@ -64,7 +65,7 @@ jobs:
           GATE_MODEL_EXECUTION_MODE: live
           GATE_MODEL_PROVIDER: deepseek
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-        run: gate --config config/gate.example.yaml run --case AIR-01 --output reports/live-sut/AIR-01
+        run: uv run gate --config config/gate.example.yaml run --case AIR-01 --output reports/live-sut/AIR-01
       - name: Upload live smoke evidence
         if: always()
         uses: actions/upload-artifact@v4
