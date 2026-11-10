@@ -6,6 +6,7 @@ from datetime import datetime
 import asyncio
 import functools
 import json
+import logging
 from typing import Any, AsyncIterator, Dict, List, Optional
 from uuid import uuid4
 
@@ -17,6 +18,7 @@ from agents import (
     InputGuardrailTripwireTriggered,
     ItemHelpers,
     MessageOutputItem,
+    RunConfig,
     Runner,
     ToolCallItem,
     ToolCallOutputItem,
@@ -47,7 +49,10 @@ from airline.agents import (
     seat_special_services_agent,
     triage_agent,
 )
+from airline.model_config import MODEL_RETRY_SETTINGS
 from memory_store import MemoryStore
+
+logger = logging.getLogger(__name__)
 
 
 class AgentEvent(BaseModel):
@@ -379,6 +384,19 @@ class AirlineServer(ChatKitServer[dict[str, Any]]):
 
         return events, active_agent
 
+    def _assistant_message_event(
+        self, thread: ThreadMetadata, text: str, context: dict[str, Any]
+    ) -> ThreadItemDoneEvent:
+        """Build a complete assistant message event with a unique id."""
+        return ThreadItemDoneEvent(
+            item=AssistantMessageItem(
+                id=self.store.generate_item_id("message", thread, context),
+                thread_id=thread.id,
+                created_at=datetime.now(),
+                content=[AssistantMessageContent(text=text)],
+            )
+        )
+
     async def respond(
         self,
         thread: ThreadMetadata,
@@ -409,6 +427,7 @@ class AirlineServer(ChatKitServer[dict[str, Any]]):
                 _get_agent_by_name(state.current_agent_name),
                 state.input_items,
                 context=chat_context,
+                run_config=RunConfig(model_settings=MODEL_RETRY_SETTINGS),
             )
             async for event in stream_agent_response(chat_context, result):
                 event = _remap_assistant_item_ids(event, assistant_item_ids)
@@ -463,7 +482,12 @@ class AirlineServer(ChatKitServer[dict[str, Any]]):
                         },
                     )
         except MaxTurnsExceeded:
+            logger.warning("Max turns exceeded for thread %s", thread.id)
+            text = "抱歉，这次处理步骤过多，没能完成回复。请换一个更简单的说法再试一次。"
+            state.input_items.append({"role": "assistant", "content": text})
+            yield self._assistant_message_event(thread, text, context)
             await self._broadcast_state(thread, context)
+            return
         except InputGuardrailTripwireTriggered as exc:
             failed_guardrail = exc.guardrail_result.guardrail
             gr_output = exc.guardrail_result.output.output_info
@@ -484,14 +508,14 @@ class AirlineServer(ChatKitServer[dict[str, Any]]):
             state.guardrails = checks
             refusal = "Sorry, I can only answer questions related to airline travel."
             state.input_items.append({"role": "assistant", "content": refusal})
-            yield ThreadItemDoneEvent(
-                item=AssistantMessageItem(
-                    id=self.store.generate_item_id("message", thread, context),
-                    thread_id=thread.id,
-                    created_at=datetime.now(),
-                    content=[AssistantMessageContent(text=refusal)],
-                )
-            )
+            yield self._assistant_message_event(thread, refusal, context)
+            return
+        except Exception:
+            logger.exception("Agent run failed for thread %s", thread.id)
+            text = "抱歉，服务暂时连接超时，没能完成这次回复。请稍后再发送一次。"
+            state.input_items.append({"role": "assistant", "content": text})
+            yield self._assistant_message_event(thread, text, context)
+            await self._broadcast_state(thread, context)
             return
         state.input_items = result.to_input_list()
         remaining_items = result.new_items[streamed_items_seen:]

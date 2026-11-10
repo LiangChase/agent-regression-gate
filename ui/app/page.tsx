@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AgentPanel } from "@/components/agent-panel";
-import { ChatKitPanel } from "@/components/chatkit-panel";
+import { ChatPanel } from "@/components/chat-panel";
 import type { Agent, AgentEvent, GuardrailCheck } from "@/lib/types";
 import { fetchBootstrapState, fetchThreadState } from "@/lib/api";
 
@@ -115,7 +115,7 @@ export default function Home() {
         guardrails={guardrails}
         context={context}
       />
-      <ChatKitPanel
+      <ChatPanel
         initialThreadId={initialThreadId}
         onThreadChange={handleThreadChange}
         onResponseEnd={handleResponseEnd}

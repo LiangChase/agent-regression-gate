@@ -4,6 +4,7 @@ import os
 import random
 import string
 
+import httpx2
 from agents import (
     Agent,
     RunContextWrapper,
@@ -40,6 +41,10 @@ if os.getenv("LLM_PROVIDER", "openai").lower() == "deepseek":
         AsyncOpenAI(
             api_key=deepseek_api_key,
             base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+            # A short connect timeout plus more client retries keeps transient
+            # VPN/network hiccups from failing the whole conversation.
+            timeout=httpx2.Timeout(connect=10.0, read=180.0, write=30.0, pool=30.0),
+            max_retries=3,
         )
     )
     set_default_openai_api("chat_completions")
