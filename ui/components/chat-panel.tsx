@@ -76,7 +76,7 @@ function ThinkingBlock({
   item: Extract<ChatItem, { kind: "thinking" }>;
   label: string;
 }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const text = item.tasks.filter(Boolean).join("\n\n");
 
   return (
@@ -347,10 +347,20 @@ export function ChatPanel({
               .split("\n")
               .find((line) => line.startsWith("data: "));
             if (!dataLine) continue;
+            let parsed: any = null;
             try {
-              handleEvent(JSON.parse(dataLine.slice(6)));
+              parsed = JSON.parse(dataLine.slice(6));
+              handleEvent(parsed);
             } catch {
               // Ignore malformed keep-alive or partial chunks.
+            }
+            // Yield after streamed updates so React paints between tokens
+            // instead of batching a whole network chunk into one render.
+            if (
+              parsed?.type === "thread.item.updated" ||
+              parsed?.type === "thread.item.added"
+            ) {
+              await new Promise((resolve) => setTimeout(resolve, 0));
             }
           }
         }
