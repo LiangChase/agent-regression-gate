@@ -70,15 +70,19 @@ def _evaluate(rule: Rule, trace: Trace) -> AssertionResult:
             actual = {**actual, "failures": sorted(set(failures))}
             reason = "Tool arguments satisfy the declared constraints." if passed else "Tool arguments are missing or do not match the declared constraints."
     elif rule.type == "tool_order":
+        # Subsequence match: unrelated calls may appear before, between, or after
+        # the listed tools; missing tools or reversed order still fail.
         expected_tools = params["tools"]
         observed = [str(event.content) for event in calls]
-        cursor = 0
+        position = 0
+        matched = 0
         for expected_tool in expected_tools:
             try:
-                cursor = observed.index(expected_tool, cursor) + 1
+                position = observed.index(expected_tool, position) + 1
+                matched += 1
             except ValueError:
                 break
-        passed = cursor == len(expected_tools)
+        passed = matched == len(expected_tools)
         actual = observed
         evidence = [event.event_id for event in calls]
         reason = "Required tool order observed." if passed else "Required tool sequence was not observed."

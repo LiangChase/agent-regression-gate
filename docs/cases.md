@@ -26,7 +26,7 @@ rules:
 | `tool_never_called` | `tool` | No matching call exists |
 | `tool_call_count` | `tool`, optional `min`/`max` | Matching call count is within bounds |
 | `tool_args_match` | `tool`, one or more of `equals`, `required_fields`, `matches` | Every matching call satisfies argument constraints; nested paths use dots |
-| `tool_order` | `tools` | Listed calls occur in order; unrelated calls may appear between them |
+| `tool_order` | `tools` | Listed calls occur in order (subsequence); unrelated calls may appear before, between, or after them |
 | `tool_allowlisted` | none | Every observed business tool call is listed for its calling agent |
 | `handoff_required` | optional `target` | A handoff exists, optionally to a matching target |
 | `final_response_contains` / `final_response_not_contains` | `text` string or list | Case-insensitive substring constraint on the last recorded assistant message |

@@ -293,7 +293,7 @@ def _comparison_context(cases: list[Case], revision: str | None, config: GateCon
     return {
         "case_set_fingerprint": digest,
         "trace_schema_version": 1,
-        "evaluator_version": "deterministic-v1",
+        "evaluator_version": "deterministic-v2",
         "gate_version": __version__,
         "sut_revision": revision,
         "model": {
