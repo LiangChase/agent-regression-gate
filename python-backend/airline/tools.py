@@ -56,12 +56,16 @@ async def get_trip_details(
     context: RunContextWrapper[AirlineAgentChatContext], message: str
 ) -> str:
     """
-    If the user mentions Paris, New York, or Austin, hydrate the context with the disrupted mock itinerary.
-    Otherwise, hydrate the on-time mock itinerary. Returns the detected flight and confirmation.
+    If the text signals a delay/disruption or mentions Paris, New York, or Austin,
+    hydrate the context with the disrupted mock itinerary. Otherwise use the on-time itinerary.
+    Returns the detected flight and confirmation.
     """
     text = message.lower()
-    keywords = ["paris", "new york", "austin"]
-    scenario_key = "disrupted" if any(k in text for k in keywords) else "on_time"
+    disruption_keywords = [
+        "paris", "new york", "austin", "delay", "delayed", "missed",
+        "disruption", "延误", "错过", "转机",
+    ]
+    scenario_key = "disrupted" if any(k in text for k in disruption_keywords) else "on_time"
     apply_itinerary_defaults(context.context.state, scenario_key=scenario_key)
     ctx = context.context.state
     if scenario_key == "disrupted":
@@ -344,17 +348,16 @@ async def display_seat_map(
 
 @function_tool(
     name_override="cancel_flight",
-    description_override="Cancel a flight."
+    description_override="Cancel a flight after the customer has confirmed the confirmation number and flight number."
 )
 async def cancel_flight(
     context: RunContextWrapper[AirlineAgentChatContext]
 ) -> str:
-    """Cancel the flight in the context."""
-    apply_itinerary_defaults(context.context.state)
-    fn = context.context.state.flight_number
-    assert fn is not None, "Flight number is required"
-    confirmation = context.context.state.confirmation_number or "".join(
-        random.choices(string.ascii_uppercase + string.digits, k=6)
-    )
-    context.context.state.confirmation_number = confirmation
-    return f"Flight {fn} successfully cancelled for confirmation {confirmation}"
+    """Cancel the flight only when both confirmation and flight are already known."""
+    ctx_state = context.context.state
+    if not ctx_state.confirmation_number or not ctx_state.flight_number:
+        return (
+            "Cancellation not performed: the confirmation number and flight number are missing. "
+            "Ask: \"Which flight would you like to cancel? Please provide your confirmation number and flight number.\""
+        )
+    return f"Flight {ctx_state.flight_number} successfully cancelled for confirmation {ctx_state.confirmation_number}"
