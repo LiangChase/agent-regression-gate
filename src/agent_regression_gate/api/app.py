@@ -538,6 +538,19 @@ async def get_comparison(comparison_id: str) -> dict[str, Any]:
     return {"comparison": value, "result": result}
 
 
+@app.get("/api/comparisons/{comparison_id}/report/json")
+async def download_comparison_json(comparison_id: str):
+    value = _store().get_comparison(comparison_id)
+    if not value:
+        raise HTTPException(status_code=404, detail="Comparison not found.")
+    path = Path(value["json_path"]).resolve()
+    try:
+        path.relative_to((_config().run.reports_dir / "comparisons").resolve())
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Comparison report is outside the configured reports directory.") from exc
+    return FileResponse(path, filename=f"agent-regression-diff-{comparison_id}.json")
+
+
 @app.get("/api/comparisons/{comparison_id}/report.md")
 async def download_comparison(comparison_id: str):
     value = _store().get_comparison(comparison_id)
