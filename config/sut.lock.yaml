@@ -4,9 +4,9 @@ sut:
   upstream_repository: https://github.com/openai/openai-cs-agents-demo.git
   project_repository: https://github.com/LiangChase/agent-regression-gate.git
   project_branch: SUT
-  revision: b4fa4678cd0bace97981ed33e4e2f31acd379c8f
+  revision: cb050b6a7bed69ba1e1f592920b53b8bb4074f49
   local_branch_at_verification: SUT
-  verification_date: 2026-11-08
+  verification_date: 2026-11-12
 
 # Both the local checkout and remote project_branch were observed at revision
-# on 2026-11-08. CI should still checkout by this immutable SHA.
+# on 2026-11-12. CI should still checkout by this immutable SHA.

@@ -19,10 +19,17 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
+      - name: Read pinned SUT revision
+        id: sut-lock
+        run: |
+          REVISION=$(awk '/^[[:space:]]*revision:/{print $2; exit}' config/sut.lock.yaml | tr -d '\r')
+          test -n "$REVISION" || (echo "config/sut.lock.yaml is missing a pinned revision" && exit 1)
+          echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
+      - name: Checkout pinned SUT from the project repository
+        uses: actions/checkout@v4
         with:
-          repository: openai/openai-cs-agents-demo
-          ref: b4fa4678cd0bace97981ed33e4e2f31acd379c8f
+          repository: ${{ github.repository }}
+          ref: ${{ steps.sut-lock.outputs.revision }}
           path: sut
       - uses: actions/setup-python@v5
         with:
@@ -61,7 +68,7 @@ jobs:
       - name: Run live smoke case
         env:
           GATE_SUT_BASE_URL: http://127.0.0.1:8000
-          GATE_SUT_REVISION: b4fa4678cd0bace97981ed33e4e2f31acd379c8f
+          GATE_SUT_REVISION: ${{ steps.sut-lock.outputs.revision }}
           GATE_MODEL_EXECUTION_MODE: live
           GATE_MODEL_PROVIDER: deepseek
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
