@@ -30,6 +30,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
   const [showRun, setShowRun] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
   const [failOn, setFailOn] = useState("critical");
@@ -42,13 +43,13 @@ export default function Home() {
     setError("");
     try {
       const [d, r, c, b, s] = await Promise.all([
-        api<Dashboard>("/dashboard"), api<{ runs: Run[] }>("/runs?limit=100"), api<{ cases: Case[] }>("/cases"), api<{ baselines: Baseline[] }>("/baselines"), api<Settings>("/settings"),
+        api<Dashboard>("/dashboard"), api<{ runs: Run[] }>(`/runs?limit=100${showArchived ? "&include_archived=true" : ""}`), api<{ cases: Case[] }>("/cases"), api<{ baselines: Baseline[] }>("/baselines"), api<Settings>("/settings"),
       ]);
       setDashboard(d); setRuns(r.runs); setCases(c.cases); setBaselines(b.baselines); setSettings(s);
       setSutBaseUrl(s.sut.base_url); setSutRevision(s.sut.revision || ""); setSutTimeout(String(s.sut.request_timeout_seconds)); setExecutionMode(s.model_metadata.execution_mode_hint);
     } catch (e) { setError(e instanceof Error ? e.message : "无法连接本地 Gate API"); }
     finally { setLoading(false); }
-  }, []);
+  }, [showArchived]);
 
   useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
@@ -69,6 +70,13 @@ export default function Home() {
     try { const result = await api<{run_id: string}>("/runs", { method: "POST", body: JSON.stringify({ case_ids: picked, fail_on: failOn }) }); setShowRun(false); setPicked([]); setNotice(`评测已加入队列：${result.run_id}`); setSelectedRun(result.run_id); await refresh(); }
     catch (e) { setError(e instanceof Error ? e.message : "启动评测失败"); }
     finally { setBusy(false); }
+  };
+  const archiveRun = async (runId: string, archived: boolean) => {
+    setError("");
+    try {
+      await api(`/runs/${encodeURIComponent(runId)}/${archived ? "archive" : "unarchive"}`, { method: "POST" });
+      await refresh();
+    } catch (e) { setError(e instanceof Error ? e.message : "归档操作失败"); }
   };
   const promote = async () => {
     if (!selectedRun || !baselineName.trim() || !baselineReason.trim()) return;
@@ -95,10 +103,10 @@ export default function Home() {
             <div className="page-heading"><div><div className="eyebrow">QUALITY CONTROL CENTER</div><h1>评测总览</h1><p>持续验证 Agent 行为规则，让每次变更都有据可查。</p></div><button className="button secondary" onClick={() => void refresh()}><RefreshCw size={15}/> 刷新数据</button></div>
             <div className="stats-grid"><Stat icon={Activity} title="总运行次数" value={dashboard?.run_count ?? 0} hint="最近 50 次" tint="blue"/><Stat icon={BarChart3} title="用例通过率" value={dashboard?.pass_rate == null ? "—" : `${dashboard.pass_rate}%`} hint="按已执行用例统计" tint="green"/><Stat icon={AlertTriangle} title="Critical 失败" value={dashboard?.critical_failures ?? 0} hint="最近 50 次运行" tint="orange"/><Stat icon={Server} title="活动任务" value={dashboard?.active_runs ?? 0} hint={dashboard?.sut_revision || "SUT revision 未标记"} tint="violet"/></div>
             <div className="section-title"><div><h2>最近运行</h2><p>评测结果与 CLI 使用相同的 Gate 判定</p></div><button className="text-button" onClick={() => setSection("runs")}>查看全部 →</button></div>
-            <RunTable runs={dashboard?.recent_runs ?? []} onOpen={id => setSelectedRun(id)}/>
+            <RunTable runs={dashboard?.recent_runs ?? []} onOpen={id => setSelectedRun(id)} onArchive={archiveRun}/>
             <div className="lower-grid"><div className="panel"><div className="panel-heading"><div><h3>风险分布</h3><p>当前版本的用例等级</p></div><BookOpenCheck size={18}/></div><div className="risk-bars">{["critical","high","medium","low"].map(level => { const count = cases.filter(c => c.risk_level === level).length; return <div className="risk-row" key={level}><span>{level}</span><div><i style={{width: `${cases.length ? Math.max(4, count / cases.length * 100) : 0}%`}} className={`risk-${level}`}/></div><b>{count}</b></div>; })}</div><div className="panel-foot">共 {cases.length} 条可运行用例</div></div><div className="panel principle"><div className="principle-icon"><ShieldCheck size={20}/></div><h3>行为规则的持续证明</h3><p>固定用例、完整轨迹、确定性断言和人工审核基线共同组成可追溯的回归门禁。</p><div className="principle-tags"><span>Cases</span><span>Traces</span><span>Evaluators</span><span>CI Gate</span></div></div></div>
           </>}
-          {section === "runs" && <><div className="page-heading"><div><div className="eyebrow">EXECUTION HISTORY</div><h1>运行记录</h1><p>查看每次执行状态、风险结果与可下载证据。</p></div><button className="primary" onClick={() => setShowRun(true)}><Play size={15} fill="currentColor"/> 新建评测</button></div><SearchBox value={query} onChange={setQuery} placeholder="搜索 Run ID 或状态"/><RunTable runs={filteredRuns} onOpen={id => setSelectedRun(id)}/></>}
+          {section === "runs" && <><div className="page-heading"><div><div className="eyebrow">EXECUTION HISTORY</div><h1>运行记录</h1><p>查看每次执行状态、风险结果与可下载证据。</p></div><div className="heading-actions"><label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)}/> 显示已归档</label><button className="primary" onClick={() => setShowRun(true)}><Play size={15} fill="currentColor"/> 新建评测</button></div></div><SearchBox value={query} onChange={setQuery} placeholder="搜索 Run ID 或状态"/><RunTable runs={filteredRuns} onOpen={id => setSelectedRun(id)} onArchive={archiveRun}/></>}
           {section === "compare" && <ComparePage runs={runs} baselines={baselines} onOpen={id => setSelectedRun(id)}/>}
           {section === "cases" && <><div className="page-heading"><div><div className="eyebrow">VERSIONED BEHAVIOR SPECS</div><h1>用例库</h1><p>用例来自仓库 YAML；控制台提供浏览与筛选，不直接改写版本控制文件。</p></div><button className="primary" onClick={() => setShowRun(true)}><Play size={15} fill="currentColor"/> 运行用例</button></div><SearchBox value={query} onChange={setQuery} placeholder="搜索 ID、名称、描述或标签"/><div className="case-grid">{filteredCases.map(c => <article className="case-card" key={c.id}><div className="case-card-top"><span className="case-id">{c.id}</span><Risk value={c.risk_level}/></div><h3>{c.name}</h3><p>{c.description || "暂无描述"}</p><div className="tags">{c.tags.map(tag => <span key={tag}>{tag}</span>)}</div><div className="case-meta"><span><ListChecks size={14}/>{c.rules.length} 条断言规则</span><span><Activity size={14}/>{c.turns.length} 轮对话</span></div><button className="text-button" onClick={() => { setPicked([c.id]); setShowRun(true); }}>运行此用例 →</button></article>)}</div>{filteredCases.length === 0 && <Empty title="没有匹配的用例" desc="调整搜索条件，或检查 cases 配置。"/>}</>}
           {section === "baselines" && <><div className="page-heading"><div><div className="eyebrow">REVIEWED EXPECTATIONS</div><h1>基线与对比</h1><p>基线只在人工审核后显式提升，普通运行不会覆盖已有基线。</p></div></div><div className="panel baseline-panel"><div className="section-title compact"><div><h2>已审核基线</h2><p>{baselines.length} 个快照</p></div></div>{baselines.length ? <div className="baseline-list">{baselines.map(b => <div className="baseline-row" key={b.name}><div className="baseline-mark"><BadgeCheck size={18}/></div><div className="baseline-info"><b>{b.name}</b><span>{b.reason}</span><small>Run {b.run_id} · {date(b.saved_at)}</small></div><button className="button secondary small" onClick={() => setSection("compare")}>去对比</button></div>)}</div> : <Empty title="尚未创建基线" desc="在成功或已审核的运行详情中填写名称和理由后显式提升。"/>}</div><div className="panel compare-panel"><h3>运行对比</h3><p>在对比页面中，每条运行可独立选择基线并查看新增失败、已修复与持续失败。</p><button className="button secondary" onClick={() => setSection("compare")}><GitCompareArrows size={15}/> 打开对比页面</button></div></>}
@@ -117,7 +125,7 @@ function Status({ value }: { value: string }) { return <span className={`status-
 function SearchBox({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) { return <div className="search-wrap"><Search size={17}/><input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}/></div>; }
 function Setting({ label, value }: { label: string; value?: string | number }) { return <div className="setting-row"><span>{label}</span><code>{value || "—"}</code></div>; }
 function Empty({ title, desc }: { title: string; desc: string }) { return <div className="empty"><div><Clock3 size={20}/></div><b>{title}</b><p>{desc}</p></div>; }
-function RunTable({ runs, onOpen }: { runs: Run[]; onOpen: (id: string) => void }) {
+function RunTable({ runs, onOpen, onArchive }: { runs: Run[]; onOpen: (id: string) => void; onArchive: (id: string, archived: boolean) => void }) {
   if (!runs.length) return <div className="panel"><Empty title="还没有运行记录" desc="启动一次评测后，运行状态和报告会显示在这里。"/></div>;
-  return <div className="table-wrap"><table><thead><tr><th>运行</th><th>状态</th><th>用例</th><th>通过率</th><th>开始时间</th><th/></tr></thead><tbody>{runs.map(run => { const summary = run.summary || {}; const rate = summary.case_count ? `${Math.round((summary.passed || 0) / summary.case_count * 100)}%` : "—"; return <tr key={run.run_id}><td><button className="run-link" onClick={() => onOpen(run.run_id)}><b>{run.run_id.slice(0, 12)}</b><small>fail on {run.fail_on}</small></button></td><td><Status value={run.status}/></td><td>{summary.case_count || run.case_count}</td><td><span className={rate === "100%" ? "green-text" : ""}>{rate}</span></td><td>{date(run.started_at || run.created_at)}</td><td><button className="text-button" onClick={() => onOpen(run.run_id)}>详情 →</button></td></tr>; })}</tbody></table></div>;
+  return <div className="table-wrap"><table><thead><tr><th>运行</th><th>状态</th><th>用例</th><th>通过率</th><th>开始时间</th><th/></tr></thead><tbody>{runs.map(run => { const summary = run.summary || {}; const rate = summary.case_count ? `${Math.round((summary.passed || 0) / summary.case_count * 100)}%` : "—"; return <tr key={run.run_id}><td><div className="run-cell"><button className="run-link" onClick={() => onOpen(run.run_id)}><b>{run.run_id.slice(0, 12)}</b><small>fail on {run.fail_on}</small></button>{run.archived_at ? <span className="archived-pill">已归档</span> : null}</div></td><td><Status value={run.status}/></td><td>{summary.case_count || run.case_count}</td><td><span className={rate === "100%" ? "green-text" : ""}>{rate}</span></td><td>{date(run.started_at || run.created_at)}</td><td><div className="row-actions"><button className="text-button" disabled={run.status === "queued" || run.status === "running"} onClick={() => onArchive(run.run_id, !run.archived_at)}>{run.archived_at ? "恢复" : "归档"}</button><button className="text-button" onClick={() => onOpen(run.run_id)}>详情 →</button></div></td></tr>; })}</tbody></table></div>;
 }

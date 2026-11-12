@@ -103,6 +103,7 @@ function CompareRow({ run, baselines, onOpen }: { run: Run; baselines: Baseline[
         <small>{date(run.started_at || run.created_at)} · {run.case_count} 条用例</small>
       </button>
       <span className={`status-badge ${run.status}`}><i/>{statusLabel[run.status] || run.status}</span>
+      {run.archived_at ? <span className="archived-pill">已归档</span> : null}
       <div className="compare-row-controls">
         <select value={baseline} onChange={e => setBaseline(e.target.value)} disabled={busy || !finished}>
           <option value="">{finished ? "选择基线" : "运行未完成"}</option>

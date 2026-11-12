@@ -17,6 +17,11 @@
 .compare-downloads a{font-size:10px;color:var(--green);display:inline-flex;align-items:center;gap:5px}
 .compare-downloads .text-button{padding:0;font-size:10px;background:none;border:0}
 .compare-md{margin-top:8px;white-space:pre-wrap}
+.heading-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.archive-toggle{display:inline-flex;align-items:center;gap:6px;font-size:10px;color:#5f6c65;white-space:nowrap;cursor:pointer}
+.run-cell{display:flex;align-items:center;gap:8px}
+.archived-pill{font-size:9px;color:#7a6a4f;background:#f7f1e6;border-radius:20px;padding:3px 6px;white-space:nowrap}
+.row-actions{display:flex;align-items:center;gap:10px;justify-content:flex-end;white-space:nowrap}
 .compare-json{margin-top:8px}
 .compare-json summary{cursor:pointer;font-size:10px;color:#68736f}
 .compare-json .json-box{margin-top:6px;max-height:260px}

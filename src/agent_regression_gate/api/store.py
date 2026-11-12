@@ -42,7 +42,8 @@ class LocalStore:
                     gate_json TEXT,
                     report_json_path TEXT,
                     report_md_path TEXT,
-                    error_message TEXT
+                    error_message TEXT,
+                    archived_at TEXT
                 );
                 CREATE INDEX IF NOT EXISTS idx_runs_created ON runs(created_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_runs_status ON runs(status);
@@ -70,6 +71,9 @@ class LocalStore:
                 );
                 """
             )
+            run_columns = {row["name"] for row in db.execute("PRAGMA table_info(runs)").fetchall()}
+            if "archived_at" not in run_columns:
+                db.execute("ALTER TABLE runs ADD COLUMN archived_at TEXT")
 
     def recover_interrupted_runs(self) -> int:
         with self.connect() as db:
@@ -106,19 +110,22 @@ class LocalStore:
             row = db.execute("SELECT * FROM runs WHERE run_id=?", (run_id,)).fetchone()
         return self._run_dict(row) if row else None
 
-    def count_runs(self) -> int:
+    def count_runs(self, *, include_archived: bool = False) -> int:
         with self.connect() as db:
-            row = db.execute("SELECT COUNT(*) FROM runs").fetchone()
+            where = "" if include_archived else " WHERE archived_at IS NULL"
+            row = db.execute(f"SELECT COUNT(*) FROM runs{where}").fetchone()
         return int(row[0])
 
     def list_runs(
         self, *, status: str | None = None, tag: str | None = None,
-        limit: int = 50, offset: int = 0,
+        include_archived: bool = False, limit: int = 50, offset: int = 0,
     ) -> list[dict[str, Any]]:
         clauses, args = [], []
         if status:
             clauses.append("status=?")
             args.append(status)
+        if not include_archived:
+            clauses.append("archived_at IS NULL")
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         if not tag:
             args.extend([limit, offset])
@@ -131,6 +138,10 @@ class LocalStore:
         if tag:
             values = [item for item in values if tag in item["filters"].get("case_tags", [])][offset:offset + limit]
         return values
+
+    def set_run_archived(self, run_id: str, archived: bool) -> None:
+        with self.connect() as db:
+            db.execute("UPDATE runs SET archived_at=? WHERE run_id=?", (now_iso() if archived else None, run_id))
 
     def get_runtime_settings(self) -> dict[str, Any]:
         with self.connect() as db:

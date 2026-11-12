@@ -1,4 +1,4 @@
-export type Run = { run_id: string; status: string; created_at: string; started_at?: string; completed_at?: string; fail_on: string; case_count: number; summary: Record<string, number>; gate: Record<string, number | string>; error_message?: string };
+export type Run = { run_id: string; status: string; created_at: string; started_at?: string; completed_at?: string; fail_on: string; case_count: number; summary: Record<string, number>; gate: Record<string, number | string>; error_message?: string; archived_at?: string | null };
 export type Case = { id: string; name: string; description: string; risk_level: string; tags: string[]; turns: string[]; rules: { id: string; type: string; severity: string; description: string; params: Record<string, unknown> }[] };
 export type Dashboard = { recent_runs: Run[]; run_count: number; active_runs: number; pass_rate: number | null; critical_failures: number; sut_revision?: string; statuses: Record<string, number> };
 export type Baseline = { name: string; run_id: string; reason: string; saved_at: string; file_path: string };

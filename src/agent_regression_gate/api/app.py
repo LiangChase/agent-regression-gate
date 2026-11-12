@@ -382,12 +382,13 @@ async def dashboard() -> dict[str, Any]:
 async def list_runs(
     status: str | None = None,
     tag: str | None = None,
+    include_archived: bool = False,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> dict[str, Any]:
     if status and status not in _STATUSES:
         raise HTTPException(status_code=422, detail="Unknown run status.")
-    runs = _store().list_runs(status=status, tag=tag, limit=limit, offset=offset)
+    runs = _store().list_runs(status=status, tag=tag, include_archived=include_archived, limit=limit, offset=offset)
     return {"runs": runs, "count": len(runs), "limit": limit, "offset": offset}
 
 
@@ -422,6 +423,26 @@ async def get_run(run_id: str) -> dict[str, Any]:
     if record.get("report_json_path"):
         response["report"] = _read_report(record)
     return response
+
+
+@app.post("/api/runs/{run_id}/archive")
+async def archive_run(run_id: str) -> dict[str, Any]:
+    record = _store().get_run(run_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    if record["status"] in {"queued", "running"}:
+        raise HTTPException(status_code=409, detail="An active run cannot be archived.")
+    _store().set_run_archived(run_id, True)
+    return {"run": _store().get_run(run_id)}
+
+
+@app.post("/api/runs/{run_id}/unarchive")
+async def unarchive_run(run_id: str) -> dict[str, Any]:
+    record = _store().get_run(run_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    _store().set_run_archived(run_id, False)
+    return {"run": _store().get_run(run_id)}
 
 
 @app.get("/api/runs/{run_id}/traces/{case_id}")
