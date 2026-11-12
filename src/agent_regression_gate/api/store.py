@@ -179,6 +179,15 @@ class LocalStore:
             rows = db.execute("SELECT * FROM baselines ORDER BY saved_at DESC").fetchall()
         return [dict(row) for row in rows]
 
+    def count_comparisons_for_baseline(self, name: str) -> int:
+        with self.connect() as db:
+            row = db.execute("SELECT COUNT(*) FROM comparisons WHERE baseline_name=?", (name,)).fetchone()
+        return int(row[0])
+
+    def delete_baseline(self, name: str) -> None:
+        with self.connect() as db:
+            db.execute("DELETE FROM baselines WHERE name=?", (name,))
+
     def save_comparison(self, *, comparison_id: str, baseline_name: str, current_run_id: str,
                         status: str, json_path: str, markdown_path: str) -> None:
         with self.connect() as db:

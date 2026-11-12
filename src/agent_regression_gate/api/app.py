@@ -519,6 +519,29 @@ async def promote_baseline(request: BaselineRequest) -> dict[str, Any]:
     return {"name": name, "run_id": request.run_id, "reason": reason, "saved_at": envelope["saved_at"]}
 
 
+@app.delete("/api/baselines/{name}")
+async def delete_baseline(name: str) -> dict[str, Any]:
+    if not _SAFE_NAME.fullmatch(name):
+        raise HTTPException(status_code=422, detail="Baseline name must use 1–80 safe filename characters.")
+    baseline = _store().get_baseline(name)
+    if not baseline:
+        raise HTTPException(status_code=404, detail="Baseline not found.")
+    path = Path(baseline["file_path"]).resolve()
+    baseline_root = _config().run.baselines_dir.resolve()
+    try:
+        path.relative_to(baseline_root)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Invalid baseline path.") from exc
+    references = _store().count_comparisons_for_baseline(name)
+    try:
+        if path.is_file():
+            path.unlink()
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail="Baseline file could not be deleted.") from exc
+    _store().delete_baseline(name)
+    return {"name": name, "deleted": True, "comparison_references": references}
+
+
 @app.post("/api/comparisons", status_code=201)
 async def create_comparison(request: ComparisonRequest) -> dict[str, Any]:
     baseline = _store().get_baseline(request.baseline_name)
