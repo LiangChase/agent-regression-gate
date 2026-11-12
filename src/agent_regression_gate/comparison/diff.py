@@ -94,25 +94,25 @@ def _case_assertions(report: dict[str, Any]) -> dict[tuple[str, str], dict[str, 
 
 def render_diff_markdown(diff: dict[str, Any]) -> str:
     lines = [
-        "# Baseline comparison", "",
-        f"- Baseline run: `{diff.get('baseline_run_id')}`",
-        f"- Current run: `{diff.get('current_run_id')}`",
-        f"- Status: **{diff.get('status', 'unknown')}**", "",
+        "# 基线对比报告", "",
+        f"- 基线运行：`{diff.get('baseline_run_id')}`",
+        f"- 当前运行：`{diff.get('current_run_id')}`",
+        f"- 对比状态：**{diff.get('status', 'unknown')}**", "",
     ]
     if diff.get("incompatibilities"):
-        lines.extend(["## Not comparable", ""])
+        lines.extend(["## 不可比项", ""])
         for item in diff["incompatibilities"]:
-            lines.append(f"- `{item['dimension']}` changed: `{item.get('baseline')}` → `{item.get('current')}`")
+            lines.append(f"- `{item['dimension']}` 发生变化：`{item.get('baseline')}` → `{item.get('current')}`")
         lines.append("")
-    for title, key in (("New failures", "new_failures"), ("Fixed", "fixed"),
-                       ("Persistent failures", "persistent_failures"), ("Changed passing results", "changed_passes")):
-        lines.extend([f"## {title} ({len(diff.get(key, []))})", ""])
+    for title, key in (("新增失败", "new_failures"), ("已修复", "fixed"),
+                       ("持续失败", "persistent_failures"), ("通过的断言结果变化", "changed_passes")):
+        lines.extend([f"## {title}（{len(diff.get(key, []))}）", ""])
         if not diff.get(key):
-            lines.append("None.")
+            lines.append("无。")
         else:
             for item in diff[key]:
                 lines.append(f"- `{item.get('case_id')}` / `{item.get('assertion_id')}`")
         lines.append("")
-    lines.extend(["## Case set changes", "", f"- Added: {', '.join(diff.get('added_cases') or []) or 'none'}",
-                  f"- Removed: {', '.join(diff.get('removed_cases') or []) or 'none'}", ""])
+    lines.extend(["## 用例集变化", "", f"- 新增用例：{', '.join(diff.get('added_cases') or []) or '无'}",
+                  f"- 移除用例：{', '.join(diff.get('removed_cases') or []) or '无'}", ""])
     return "\n".join(lines)
