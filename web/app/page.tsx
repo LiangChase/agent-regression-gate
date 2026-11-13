@@ -35,8 +35,6 @@ export default function Home() {
   const [picked, setPicked] = useState<string[]>([]);
   const [failOn, setFailOn] = useState("critical");
   const [sutCheck, setSutCheck] = useState<any>(null);
-  const [baselineName, setBaselineName] = useState("");
-  const [baselineReason, setBaselineReason] = useState("");
   const [notice, setNotice] = useState("");
 
   const refresh = useCallback(async () => {
@@ -71,6 +69,7 @@ export default function Home() {
   }, [hasActiveRuns, refreshRuns]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { setError(""); }, [selectedRun]);
   useEffect(() => {
     if (!selectedRun) return;
     let active = true;
@@ -96,13 +95,6 @@ export default function Home() {
       await api(`/runs/${encodeURIComponent(runId)}/${archived ? "archive" : "unarchive"}`, { method: "POST" });
       await refresh();
     } catch (e) { setError(e instanceof Error ? e.message : "归档操作失败"); }
-  };
-  const promote = async () => {
-    if (!selectedRun || !baselineName.trim() || !baselineReason.trim()) return;
-    setBusy(true); setError("");
-    try { await api("/baselines", { method: "POST", body: JSON.stringify({ run_id: selectedRun, name: baselineName, reason: baselineReason }) }); setBaselineName(""); setBaselineReason(""); setNotice("基线已保存，历史基线不会被覆盖。"); await refresh(); }
-    catch (e) { setError(e instanceof Error ? e.message : "基线保存失败"); }
-    finally { setBusy(false); }
   };
   const deleteBaseline = async (name: string) => {
     if (!window.confirm(`确定删除基线「${name}」？\n\n删除后不能再用于对比；历史对比报告文件会保留，运行记录不会受影响。`)) return;
@@ -146,7 +138,7 @@ export default function Home() {
       </div>
     </section>
     {showRun && <div className="overlay" onMouseDown={e => { if (e.target === e.currentTarget) setShowRun(false); }}><section className="modal"><div className="modal-heading"><div><div className="eyebrow">NEW EVALUATION</div><h2>启动评测</h2><p>任务在服务端后台执行，可在运行详情中查看进度。</p></div><button className="icon-button" onClick={() => setShowRun(false)}><X size={18}/></button></div><label className="field-label">选择用例 <span>未选择时运行全部 {cases.length} 条</span></label><div className="picker-list">{cases.map(c => <label className="picker-item" key={c.id}><input type="checkbox" checked={picked.includes(c.id)} onChange={e => setPicked(prev => e.target.checked ? [...prev, c.id] : prev.filter(id => id !== c.id))}/><span><b>{c.id}</b> {c.name}</span><Risk value={c.risk_level}/></label>)}</div><label className="field-label" htmlFor="failOn">失败阈值</label><select id="failOn" value={failOn} onChange={e => setFailOn(e.target.value)}><option value="critical">Critical</option><option value="high">High 及以上</option><option value="medium">Medium 及以上</option><option value="low">Low 及以上</option><option value="any">任意失败</option></select><div className="modal-foot"><span><ShieldCheck size={15}/> 相同 Gate 规则用于 CLI / CI</span><button className="primary" disabled={busy || !cases.length} onClick={() => void startRun()}>{busy ? <LoaderCircle className="spin" size={15}/> : <Play size={14} fill="currentColor"/>} 开始运行</button></div></section></div>}
-    {selectedRun && <div className="overlay" onMouseDown={e => { if (e.target === e.currentTarget) { setSelectedRun(null); setTrace(null); } }}><section className="detail-drawer"><div className="drawer-heading"><div><div className="eyebrow">RUN EVIDENCE</div><h2>运行详情</h2><code>{selectedRun}</code></div><button className="icon-button" onClick={() => { setSelectedRun(null); setTrace(null); }}><X size={18}/></button></div>{!runDetail ? <div className="loading"><LoaderCircle className="spin"/> 正在加载运行详情…</div> : <><div className="drawer-status"><Status value={runDetail.run.status}/><span>创建于 {date(runDetail.run.created_at)}</span>{runDetail.run.completed_at && <span>结束于 {date(runDetail.run.completed_at)}</span>}</div>{runDetail.report ? <><div className="detail-kpis"><div><small>通过用例</small><b>{runDetail.report.summary?.passed ?? 0}/{runDetail.report.summary?.case_count ?? 0}</b></div><div><small>Critical 失败</small><b>{runDetail.report.gate?.critical_failures ?? 0}</b></div><div><small>阻断断言</small><b>{runDetail.report.gate?.blocking_assertions ?? 0}</b></div></div><div className="drawer-actions"><a className="button secondary small" href={`/api/runs/${encodeURIComponent(selectedRun)}/report/json`}><ArrowDownToLine size={14}/> JSON</a><a className="button secondary small" href={`/api/runs/${encodeURIComponent(selectedRun)}/report/md`}><ArrowDownToLine size={14}/> Markdown</a></div><h3 className="drawer-section-title">用例结果</h3><div className="result-list">{runDetail.report.cases?.map((c: any) => <article className="result-card" key={c.case_id}><div className="result-head"><div><b>{c.case_id}</b><span>{c.name}</span></div><Status value={c.status}/></div>{c.error_message && <p className="error-copy">{c.error_category}: {c.error_message}</p>}<div className="assertions">{c.assertions?.map((a: any) => <div key={a.assertion_id} className={`assertion ${a.passed ? "assert-pass" : "assert-fail"}`}><i/>{a.assertion_id} · {a.severity}<span>{a.message}</span></div>)}</div>{c.trace_path ? <button className="text-button" onClick={async () => { try { setTrace(await api(`/runs/${encodeURIComponent(selectedRun)}/traces/${encodeURIComponent(c.case_id)}`)); } catch (e) { setError(e instanceof Error ? e.message : "无法读取 Trace"); } }}>查看完整 Trace →</button> : <small className="muted">无可用 Trace{c.status === "incomplete" ? " · 本次采集不完整" : ""}</small>}</article>)}</div><label className="field-label baseline-form-title">审核后提升为基线</label><div className="baseline-form"><input placeholder="基线名称，如 release-2026-11" value={baselineName} onChange={e => setBaselineName(e.target.value)}/><input placeholder="审核理由（必填）" value={baselineReason} onChange={e => setBaselineReason(e.target.value)}/><button className="button secondary" disabled={busy || !baselineName.trim() || !baselineReason.trim()} onClick={() => void promote()}><BadgeCheck size={14}/> 提升基线</button></div></> : <div className="loading"><LoaderCircle className="spin"/> 评测运行中，自动刷新状态…</div>}</>}{trace && <div className="trace-modal"><div className="trace-head"><b>Trace · {trace.case_id}</b><button className="icon-button" onClick={() => setTrace(null)}><X size={16}/></button></div><pre>{JSON.stringify(trace, null, 2)}</pre></div>}</section></div>}
+    {selectedRun && <div className="overlay" onMouseDown={e => { if (e.target === e.currentTarget) { setSelectedRun(null); setTrace(null); } }}><section className="detail-drawer"><div className="drawer-heading"><div><div className="eyebrow">RUN EVIDENCE</div><h2>运行详情</h2><code>{selectedRun}</code></div><button className="icon-button" onClick={() => { setSelectedRun(null); setTrace(null); }}><X size={18}/></button></div>{!runDetail ? <div className="loading"><LoaderCircle className="spin"/> 正在加载运行详情…</div> : <><div className="drawer-status"><Status value={runDetail.run.status}/><span>创建于 {date(runDetail.run.created_at)}</span>{runDetail.run.completed_at && <span>结束于 {date(runDetail.run.completed_at)}</span>}</div>{runDetail.report ? <><div className="detail-kpis"><div><small>通过用例</small><b>{runDetail.report.summary?.passed ?? 0}/{runDetail.report.summary?.case_count ?? 0}</b></div><div><small>Critical 失败</small><b>{runDetail.report.gate?.critical_failures ?? 0}</b></div><div><small>阻断断言</small><b>{runDetail.report.gate?.blocking_assertions ?? 0}</b></div></div><div className="drawer-actions"><a className="button secondary small" href={`/api/runs/${encodeURIComponent(selectedRun)}/report/json`}><ArrowDownToLine size={14}/> JSON</a><a className="button secondary small" href={`/api/runs/${encodeURIComponent(selectedRun)}/report/md`}><ArrowDownToLine size={14}/> Markdown</a></div><h3 className="drawer-section-title">用例结果</h3><div className="result-list">{runDetail.report.cases?.map((c: any) => <article className="result-card" key={c.case_id}><div className="result-head"><div><b>{c.case_id}</b><span>{c.name}</span></div><Status value={c.status}/></div>{c.error_message && <p className="error-copy">{c.error_category}: {c.error_message}</p>}<div className="assertions">{c.assertions?.map((a: any) => <div key={a.assertion_id} className={`assertion ${a.passed ? "assert-pass" : "assert-fail"}`}><i/>{a.assertion_id} · {a.severity}<span>{a.message}</span></div>)}</div>{c.trace_path ? <button className="text-button" onClick={async () => { try { setTrace(await api(`/runs/${encodeURIComponent(selectedRun)}/traces/${encodeURIComponent(c.case_id)}`)); } catch (e) { setError(e instanceof Error ? e.message : "无法读取 Trace"); } }}>查看完整 Trace →</button> : <small className="muted">无可用 Trace{c.status === "incomplete" ? " · 本次采集不完整" : ""}</small>}</article>)}</div><BaselineForm key={selectedRun} runId={selectedRun} onSaved={async () => { setNotice("基线已保存，历史基线不会被覆盖。"); await refresh(); }}/></> : <div className="loading"><LoaderCircle className="spin"/> 评测运行中，自动刷新状态…</div>}</>}{trace && <div className="trace-modal"><div className="trace-head"><b>Trace · {trace.case_id}</b><button className="icon-button" onClick={() => setTrace(null)}><X size={16}/></button></div><pre>{JSON.stringify(trace, null, 2)}</pre></div>}</section></div>}
   </main>;
 }
 
@@ -156,6 +148,32 @@ function Status({ value }: { value: string }) { return <span className={`status-
 function SearchBox({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) { return <div className="search-wrap"><Search size={17}/><input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}/></div>; }
 function Setting({ label, value }: { label: string; value?: string | number }) { return <div className="setting-row"><span>{label}</span><code>{value || "—"}</code></div>; }
 function Empty({ title, desc }: { title: string; desc: string }) { return <div className="empty"><div><Clock3 size={20}/></div><b>{title}</b><p>{desc}</p></div>; }
+function BaselineForm({ runId, onSaved }: { runId: string; onSaved: () => Promise<void> }) {
+  const [name, setName] = useState("");
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const save = async () => {
+    if (!name.trim() || !reason.trim()) return;
+    setSaving(true); setError("");
+    try {
+      await api("/baselines", { method: "POST", body: JSON.stringify({ run_id: runId, name, reason }) });
+      setName(""); setReason("");
+      await onSaved();
+    } catch (e) { setError(e instanceof Error ? e.message : "基线保存失败"); }
+    finally { setSaving(false); }
+  };
+  return <>
+    <label className="field-label baseline-form-title">审核后提升为基线</label>
+    <div className="baseline-form">
+      <input placeholder="基线名称，如 release-2026-11" value={name} onChange={e => setName(e.target.value)}/>
+      <input placeholder="审核理由（必填）" value={reason} onChange={e => setReason(e.target.value)}/>
+      <button className="button secondary" disabled={saving || !name.trim() || !reason.trim()} onClick={() => void save()}>{saving ? <LoaderCircle className="spin" size={14}/> : <BadgeCheck size={14}/>} 提升基线</button>
+    </div>
+    {error && <p className="error-copy baseline-form-error">{error}</p>}
+  </>;
+}
+
 function RunTable({ runs, onOpen, onArchive }: { runs: Run[]; onOpen: (id: string) => void; onArchive: (id: string, archived: boolean) => void }) {
   if (!runs.length) return <div className="panel"><Empty title="还没有运行记录" desc="启动一次评测后，运行状态和报告会显示在这里。"/></div>;
   return <div className="table-wrap"><table><thead><tr><th>运行</th><th>状态</th><th>用例</th><th>通过率</th><th>开始时间</th><th/></tr></thead><tbody>{runs.map(run => { const summary = run.summary || {}; const rate = summary.case_count ? `${Math.round((summary.passed || 0) / summary.case_count * 100)}%` : "—"; return <tr key={run.run_id}><td><div className="run-cell"><button className="run-link" onClick={() => onOpen(run.run_id)}><b>{run.run_id.slice(0, 12)}</b><small>fail on {run.fail_on}</small></button>{run.archived_at ? <span className="archived-pill">已归档</span> : null}</div></td><td><Status value={run.status}/></td><td>{summary.case_count || run.case_count}</td><td><span className={rate === "100%" ? "green-text" : ""}>{rate}</span></td><td>{date(run.started_at || run.created_at)}</td><td><div className="row-actions"><button className="text-button" disabled={run.status === "queued" || run.status === "running"} onClick={() => onArchive(run.run_id, !run.archived_at)}>{run.archived_at ? "恢复" : "归档"}</button><button className="text-button" onClick={() => onOpen(run.run_id)}>详情 →</button></div></td></tr>; })}</tbody></table></div>;
