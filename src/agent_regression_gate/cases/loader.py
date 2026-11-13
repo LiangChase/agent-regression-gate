@@ -119,7 +119,8 @@ def _parse_case(value: Any, file: Path, index: int) -> list[Case]:
             version=str(value.get("version", "1")), tags=tags,
             description=str(value.get("description", "")), timeout_seconds=float(timeout),
             requires_tool_trace=any(
-                r.type in {"tool_must_be_called", "tool_call_count", "tool_args_match", "tool_order"}
+                r.type in {"tool_must_be_called", "tool_args_match", "tool_order"}
+                or (r.type == "tool_call_count" and r.params.get("min", 0) >= 1)
                 or (r.type == "trace_complete" and bool(r.params.get("require_tool_trace")))
                 for r in rules
             ),
