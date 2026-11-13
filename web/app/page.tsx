@@ -51,6 +51,25 @@ export default function Home() {
     finally { setLoading(false); }
   }, [showArchived]);
 
+  const refreshRuns = useCallback(async () => {
+    try {
+      const [d, r] = await Promise.all([
+        api<Dashboard>("/dashboard"),
+        api<{ runs: Run[] }>(`/runs?limit=100${showArchived ? "&include_archived=true" : ""}`),
+      ]);
+      setDashboard(d); setRuns(r.runs);
+    } catch { /* background polling stays quiet; explicit actions surface errors */ }
+  }, [showArchived]);
+
+  const hasActiveRuns = (dashboard?.active_runs ?? 0) > 0
+    || runs.some(run => run.status === "queued" || run.status === "running");
+
+  useEffect(() => {
+    if (!hasActiveRuns) return;
+    const timer = window.setInterval(() => { void refreshRuns(); }, 2000);
+    return () => window.clearInterval(timer);
+  }, [hasActiveRuns, refreshRuns]);
+
   useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
     if (!selectedRun) return;
@@ -106,8 +125,10 @@ export default function Home() {
     </aside>
     <section className="main-area"><header className="topbar"><div className="crumb">工作区 <span>/</span> <b>{nav.find(n => n.id === section)?.label}</b></div><div className="top-actions"><div className="api-state"><span className="live-dot"/>API 已连接</div><button className="icon-button" onClick={() => void refresh()} title="刷新"><RefreshCw size={17}/></button><button className="primary" onClick={() => setShowRun(true)}><Play size={15} fill="currentColor"/> 新建评测</button></div></header>
       <div className="content">
-        {error && <div className="alert error"><AlertTriangle size={17}/>{error}<button onClick={() => setError("")}><X size={15}/></button></div>}
-        {notice && <div className="alert success"><BadgeCheck size={17}/>{notice}<button onClick={() => setNotice("")}><X size={15}/></button></div>}
+        {(error || notice) && <div className="toast-stack">
+          {error && <div className="alert error"><AlertTriangle size={17}/>{error}<button onClick={() => setError("")}><X size={15}/></button></div>}
+          {notice && <div className="alert success"><BadgeCheck size={17}/>{notice}<button onClick={() => setNotice("")}><X size={15}/></button></div>}
+        </div>}
         {loading ? <div className="loading"><LoaderCircle className="spin"/> 正在读取本地项目数据…</div> : <>
           {section === "overview" && <>
             <div className="page-heading"><div><div className="eyebrow">QUALITY CONTROL CENTER</div><h1>评测总览</h1><p>持续验证 Agent 行为规则，让每次变更都有据可查。</p></div><button className="button secondary" onClick={() => void refresh()}><RefreshCw size={15}/> 刷新数据</button></div>
