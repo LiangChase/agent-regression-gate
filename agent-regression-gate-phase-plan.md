@@ -64,6 +64,16 @@
 
 **验收状态：** 命令与当前 CLI 入口逐项对应；本地 Python 3.12 环境已通过 compileall、config/case CLI 校验、锁定依赖安装和无模型端到端 fixture 执行。GitHub Actions pass 与真实红色 negative-control run 均有链接见 P7；真实航空 SUT smoke 尚未执行，需要手动 dispatch 和 DeepSeek secret。
 
+## P9 执行记录（2026-11-09）
+
+实现 `web/` Next.js + TypeScript 单用户控制台和 `src/agent_regression_gate/api/` FastAPI 服务。控制台包括 dashboard、run 列表与状态轮询、case 浏览/筛选、异步启动评测、断言/trace 查看、报告下载、baseline 审核提升与兼容性对比，以及 SUT 地址、revision、超时和执行模式的本机配置。配置覆盖与 run 元数据保存在本地 SQLite；Trace/报告仍经既有 runner 写入脱敏文件。用例 YAML 不在 UI 中编辑，API 与 Next 前端只绑定 loopback，同源代理转发；密钥不写入浏览器或 API 响应。未引入 PostgreSQL/云端数据库、账号或匿名公网部署。
+
+补充 [`docs/api-contract.md`](./docs/api-contract.md)、[`docs/web-console-flow.md`](./docs/web-console-flow.md)，更新 README 启动方式和架构说明；API 由 `gate serve` 命令启动。
+
+**验收状态：** `npm run typecheck`、Next.js production build、Python 3.12 CLI help/config-check 成功。Loopback 集成 smoke 使用现有确定性 fixture 和真实 runner 执行 AIR-01，检查 run/report/trace、baseline 显式保存、diff 下载、dashboard，并重启 API 后确认历史记录仍在；结果 PASS。P9 仅是本地单用户演示版；公网、认证、多用户、任务队列、取消运行和托管数据库留在 P10。
+
+**实现提交：** `3d146d2`（`Add local web console for agent evaluation runs`）。验收命令：`uv lock --check`、Python 3.12 `compileall`、CLI `config-check`/`serve` smoke、loopback fixture API smoke、`npm ci`、`npm run typecheck`、`npm run build`。
+
 ## 1. 目标、范围与完成定义
 
 ### 1.1 项目最终要证明什么
@@ -668,12 +678,3 @@ P9 前端排在 CLI/CI 核心 MVP 之后；对于“可操作 Web 产品”目�
 
 > 阶段实际完成后，应更新本文件或另建进度记录，标明完成日期、提交 SHA、验证命令和证据链接；不要仅凭代码已写就标记完成。
 
-## P9 执行记录（2026-11-09）
-
-实现 `web/` Next.js + TypeScript 单用户控制台和 `src/agent_regression_gate/api/` FastAPI 服务。控制台包括 dashboard、run 列表与状态轮询、case 浏览/筛选、异步启动评测、断言/trace 查看、报告下载、baseline 审核提升与兼容性对比，以及 SUT 地址、revision、超时和执行模式的本机配置。配置覆盖与 run 元数据保存在本地 SQLite；Trace/报告仍经既有 runner 写入脱敏文件。用例 YAML 不在 UI 中编辑，API 与 Next 前端只绑定 loopback，同源代理转发；密钥不写入浏览器或 API 响应。未引入 PostgreSQL/云端数据库、账号或匿名公网部署。
-
-补充 [`docs/api-contract.md`](./docs/api-contract.md)、[`docs/web-console-flow.md`](./docs/web-console-flow.md)，更新 README 启动方式和架构说明；API 由 `gate serve` 命令启动。
-
-**验收状态：** `npm run typecheck`、Next.js production build、Python 3.12 CLI help/config-check 成功。Loopback 集成 smoke 使用现有确定性 fixture 和真实 runner 执行 AIR-01，检查 run/report/trace、baseline 显式保存、diff 下载、dashboard，并重启 API 后确认历史记录仍在；结果 PASS。P9 仅是本地单用户演示版；公网、认证、多用户、任务队列、取消运行和托管数据库留在 P10。
-
-**实现提交：** `3d146d2`（`Add local web console for agent evaluation runs`）。验收命令：`uv lock --check`、Python 3.12 `compileall`、CLI `config-check`/`serve` smoke、loopback fixture API smoke、`npm ci`、`npm run typecheck`、`npm run build`。
