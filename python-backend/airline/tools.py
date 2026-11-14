@@ -348,16 +348,25 @@ async def display_seat_map(
 
 @function_tool(
     name_override="cancel_flight",
-    description_override="Cancel a flight after the customer has confirmed the confirmation number and flight number."
+    description_override=(
+        "Cancel a flight after the customer has confirmed the confirmation number and flight number. "
+        "Pass the confirmed confirmation_number and flight_number values as arguments."
+    ),
 )
 async def cancel_flight(
-    context: RunContextWrapper[AirlineAgentChatContext]
+    context: RunContextWrapper[AirlineAgentChatContext],
+    confirmation_number: str | None = None,
+    flight_number: str | None = None,
 ) -> str:
-    """Cancel the flight only when both confirmation and flight are already known."""
+    """Cancel the flight using confirmed values, falling back to the current context."""
     ctx_state = context.context.state
-    if not ctx_state.confirmation_number or not ctx_state.flight_number:
+    confirmation = (confirmation_number or ctx_state.confirmation_number or "").strip()
+    flight = (flight_number or ctx_state.flight_number or "").strip()
+    if not confirmation or not flight:
         return (
             "Cancellation not performed: the confirmation number and flight number are missing. "
             "Ask: \"Which flight would you like to cancel? Please provide your confirmation number and flight number.\""
         )
-    return f"Flight {ctx_state.flight_number} successfully cancelled for confirmation {ctx_state.confirmation_number}"
+    ctx_state.confirmation_number = confirmation
+    ctx_state.flight_number = flight
+    return f"Flight {flight} successfully cancelled for confirmation {confirmation}"
