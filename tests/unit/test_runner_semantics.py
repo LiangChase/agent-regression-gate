@@ -88,7 +88,7 @@ def test_comparison_context_is_stable_and_tracks_turns_not_names(tmp_path, monke
     cases = load_cases("cases/airline").cases
     context = _comparison_context(cases, "rev-1", config)
 
-    assert context["evaluator_version"] == "deterministic-v3"
+    assert context["evaluator_version"] == "deterministic-v4"
     assert context["trace_schema_version"] == 1
     assert context["sut_revision"] == "rev-1"
     assert context["model"]["model_name"] == "deepseek-flash"

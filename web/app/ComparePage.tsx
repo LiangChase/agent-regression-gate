@@ -18,6 +18,7 @@ type ComparisonResult = {
   fixed?: DiffItem[];
   persistent_failures?: DiffItem[];
   changed_passes?: DiffItem[];
+  missing_evidence?: DiffItem[];
   added_cases?: string[];
   removed_cases?: string[];
 };
@@ -60,6 +61,7 @@ function CompareRow({ run, baselines, onOpen }: { run: Run; baselines: Baseline[
     fixed: result.fixed?.length ?? 0,
     persistent: result.persistent_failures?.length ?? 0,
     changed: result.changed_passes?.length ?? 0,
+    missing: result.missing_evidence?.length ?? 0,
     added: result.added_cases?.length ?? 0,
     removed: result.removed_cases?.length ?? 0,
   } : null;
@@ -122,6 +124,7 @@ function CompareRow({ run, baselines, onOpen }: { run: Run; baselines: Baseline[
         <span>已修复 {counts.fixed}</span>
         <span>持续失败 {counts.persistent}</span>
         <span>结果变化 {counts.changed}</span>
+        <span>证据缺失 {counts.missing}</span>
         <span>新增用例 {counts.added}</span>
         <span>移除用例 {counts.removed}</span>
       </div>
@@ -134,6 +137,7 @@ function CompareRow({ run, baselines, onOpen }: { run: Run; baselines: Baseline[
       <DiffList title="新增失败" items={result.new_failures}/>
       <DiffList title="已修复" items={result.fixed}/>
       <DiffList title="持续失败" items={result.persistent_failures}/>
+      <DiffList title="证据缺失" items={result.missing_evidence}/>
       <DiffList title="通过的断言结果变化" items={result.changed_passes}/>
       <CaseList title="新增用例" items={result.added_cases}/>
       <CaseList title="移除用例" items={result.removed_cases}/>

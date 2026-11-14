@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pytest
-
 from agent_regression_gate.comparison.diff import compare_reports, render_diff_markdown
 
 MODEL = {"provider": "deepseek", "model_name": "deepseek-flash", "execution_mode": "deterministic"}
@@ -29,7 +27,7 @@ def report(
     cases: list[dict],
     *,
     fingerprint: str = "fingerprint-1",
-    evaluator: str = "deterministic-v3",
+    evaluator: str = "deterministic-v4",
     model: dict | None = None,
     sut: str = "rev-1",
 ):
@@ -88,6 +86,7 @@ def test_classifies_new_fixed_persistent_and_changed_passes():
         "fixed": 1,
         "persistent_failures": 1,
         "changed_passes": 1,
+        "missing_evidence": 0,
         "added_cases": 0,
         "removed_cases": 0,
         "case_status_changes": 0,
@@ -117,22 +116,36 @@ def test_incompatible_context_suppresses_assertion_differences():
 
 
 def test_changed_evaluator_version_is_not_comparable():
-    baseline = report("baseline", [], evaluator="deterministic-v2")
-    current = report("current", [], evaluator="deterministic-v3")
+    baseline = report("baseline", [], evaluator="deterministic-v3")
+    current = report("current", [], evaluator="deterministic-v4")
     diff = compare_reports(baseline, current)
     assert diff["status"] == "not_comparable"
     assert diff["incompatibilities"][0]["dimension"] == "evaluator_version"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Known defect: an assertion missing from an incomplete/error run is classified as fixed.",
-)
 def test_missing_assertion_is_not_reported_as_fixed():
     baseline = report("baseline", [case("CASE-1", "fail", [assertion("R1", False)])])
     current = report("current", [case("CASE-1", "error", [])])
     diff = compare_reports(baseline, current)
     assert diff["fixed"] == []
+    assert diff["missing_evidence"] == [
+        {
+            "case_id": "CASE-1",
+            "assertion_id": "R1",
+            "baseline": assertion("R1", False),
+            "current_status": "error",
+        }
+    ]
+    assert diff["summary"]["missing_evidence"] == 1
+
+
+def test_missing_passing_assertion_is_also_reported_as_missing_evidence():
+    baseline = report("baseline", [case("CASE-1", "pass", [assertion("R1", True)])])
+    current = report("current", [case("CASE-1", "incomplete", [])])
+    diff = compare_reports(baseline, current)
+    assert diff["fixed"] == []
+    assert diff["missing_evidence"][0]["assertion_id"] == "R1"
+    assert diff["missing_evidence"][0]["current_status"] == "incomplete"
 
 
 def test_render_markdown_uses_chinese_labels_and_stable_ids():
@@ -141,5 +154,6 @@ def test_render_markdown_uses_chinese_labels_and_stable_ids():
     markdown = render_diff_markdown(compare_reports(baseline, current))
     assert "# 基线对比报告" in markdown
     assert "## 新增失败（1）" in markdown
+    assert "## 证据缺失（0）" in markdown
     assert "`CASE-1` / `R1`" in markdown
     assert "## 用例集变化" in markdown

@@ -129,13 +129,10 @@ def test_final_response_contains_uses_last_message_and_is_case_insensitive():
     assert evaluate(rule, [message("Please confirm.")]).passed is False
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Known defect: list text uses any-of semantics instead of requiring all terms.",
-)
 def test_final_response_contains_list_requires_all_terms():
     rule = make_rule("final_response_contains", text=["which", "confirmation", "flight"])
     assert evaluate(rule, [message("Which flight?")]).passed is False
+    assert evaluate(rule, [message("Which flight? Please provide your confirmation number.")]).passed is True
 
 
 def test_final_response_not_contains_is_case_insensitive():

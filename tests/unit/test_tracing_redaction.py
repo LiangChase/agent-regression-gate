@@ -58,15 +58,11 @@ def test_secret_values_are_redacted_even_when_pii_redaction_is_disabled():
     assert "Bearer" not in value["note"]
 
 
-def test_none_pii_value_is_redacted_today():
-    # Documents current behavior; see the defect list: missing values become
-    # indistinguishable from redacted values.
-    assert TraceRedactor(redact_pii=True).redact(None, key="confirmation_number") == "[REDACTED]"
-
-
-@pytest.mark.xfail(
-    strict=True,
-    reason="Known defect: key-based redaction converts a missing value into [REDACTED].",
-)
 def test_pii_key_with_none_value_stays_none():
-    assert TraceRedactor(redact_pii=True).redact(None, key="confirmation_number") is None
+    redactor = TraceRedactor(redact_pii=True)
+    assert redactor.redact(None, key="confirmation_number") is None
+    assert redactor.stats.fields_redacted == 0
+    assert redactor.redact({"confirmation_number": None, "seat": "14C"}) == {
+        "confirmation_number": None,
+        "seat": "14C",
+    }

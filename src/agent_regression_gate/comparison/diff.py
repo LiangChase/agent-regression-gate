@@ -33,7 +33,7 @@ def compare_reports(baseline: dict[str, Any], current: dict[str, Any]) -> dict[s
         for case_id in sorted(set(before_cases) & set(after_cases))
         if before_cases[case_id].get("status") != after_cases[case_id].get("status")
     ]
-    new_failures, fixed, persistent, changed = [], [], [], []
+    new_failures, fixed, persistent, changed, missing_evidence = [], [], [], [], []
     for key in sorted(set(before) | set(after)):
         old, new = before.get(key), after.get(key)
         item = {"case_id": key[0], "assertion_id": key[1]}
@@ -42,8 +42,12 @@ def compare_reports(baseline: dict[str, Any], current: dict[str, Any]) -> dict[s
                 new_failures.append({**item, "current": new})
             continue
         if new is None:
-            if not old.get("passed", False):
-                fixed.append({**item, "baseline": old, "removed": True})
+            current_case = after_cases.get(key[0], {})
+            missing_evidence.append({
+                **item,
+                "baseline": old,
+                "current_status": current_case.get("status"),
+            })
             continue
         if old.get("passed", False) and not new.get("passed", False):
             new_failures.append({**item, "baseline": old, "current": new})
@@ -56,7 +60,7 @@ def compare_reports(baseline: dict[str, Any], current: dict[str, Any]) -> dict[s
 
     comparable = not incompatible
     return {
-        "comparison_schema_version": 1,
+        "comparison_schema_version": 2,
         "baseline_run_id": baseline.get("run_id"),
         "current_run_id": current.get("run_id"),
         "baseline_sut_revision": baseline.get("sut_revision"),
@@ -68,6 +72,7 @@ def compare_reports(baseline: dict[str, Any], current: dict[str, Any]) -> dict[s
         "fixed": fixed if comparable else [],
         "persistent_failures": persistent if comparable else [],
         "changed_passes": changed if comparable else [],
+        "missing_evidence": missing_evidence if comparable else [],
         "added_cases": added_cases,
         "removed_cases": removed_cases,
         "case_status_changes": case_status_changes if comparable else [],
@@ -76,6 +81,7 @@ def compare_reports(baseline: dict[str, Any], current: dict[str, Any]) -> dict[s
             "fixed": len(fixed) if comparable else 0,
             "persistent_failures": len(persistent) if comparable else 0,
             "changed_passes": len(changed) if comparable else 0,
+            "missing_evidence": len(missing_evidence) if comparable else 0,
             "added_cases": len(added_cases),
             "removed_cases": len(removed_cases),
             "case_status_changes": len(case_status_changes) if comparable else 0,
@@ -105,7 +111,8 @@ def render_diff_markdown(diff: dict[str, Any]) -> str:
             lines.append(f"- `{item['dimension']}` 发生变化：`{item.get('baseline')}` → `{item.get('current')}`")
         lines.append("")
     for title, key in (("新增失败", "new_failures"), ("已修复", "fixed"),
-                       ("持续失败", "persistent_failures"), ("通过的断言结果变化", "changed_passes")):
+                       ("持续失败", "persistent_failures"), ("证据缺失", "missing_evidence"),
+                       ("通过的断言结果变化", "changed_passes")):
         lines.extend([f"## {title}（{len(diff.get(key, []))}）", ""])
         if not diff.get(key):
             lines.append("无。")

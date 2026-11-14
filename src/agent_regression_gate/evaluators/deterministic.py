@@ -105,8 +105,12 @@ def _evaluate(rule: Rule, trace: Trace) -> AssertionResult:
     elif rule.type in {"final_response_contains", "final_response_not_contains"}:
         needle = params["text"]
         needles = needle if isinstance(needle, list) else [needle]
-        matches = [item for item in needles if isinstance(item, str) and item.casefold() in final_text.casefold()]
-        passed = bool(matches) if rule.type == "final_response_contains" else not matches
+        terms = [item.casefold() for item in needles if isinstance(item, str)]
+        haystack = final_text.casefold()
+        if rule.type == "final_response_contains":
+            passed = bool(terms) and all(term in haystack for term in terms)
+        else:
+            passed = not any(term in haystack for term in terms)
         actual = final_text
         evidence = [messages[-1].event_id] if messages else []
         reason = "Final response matched the text constraint." if passed else "Final response violated the text constraint."

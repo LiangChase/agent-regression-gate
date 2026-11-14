@@ -30,7 +30,7 @@ def make_report(run_id: str, *, assertion_passed: bool = True):
         "comparison_context": {
             "case_set_fingerprint": "fingerprint-1",
             "trace_schema_version": 1,
-            "evaluator_version": "deterministic-v3",
+            "evaluator_version": "deterministic-v4",
             "gate_version": "0.1.0",
             "sut_revision": "rev-test",
             "model": {

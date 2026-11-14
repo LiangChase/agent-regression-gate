@@ -40,7 +40,7 @@ class TraceRedactor:
         self.stats = RedactionStats()
 
     def redact(self, value: Any, *, key: str = "") -> Any:
-        if _SECRET_KEY.search(key) or (self.redact_pii and _PII_KEY.search(key)):
+        if value is not None and (_SECRET_KEY.search(key) or (self.redact_pii and _PII_KEY.search(key))):
             self.stats.fields_redacted += 1
             return "[REDACTED]"
         if isinstance(value, Mapping):

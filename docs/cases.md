@@ -29,7 +29,7 @@ rules:
 | `tool_order` | `tools` | Listed calls occur in order (subsequence); unrelated calls may appear before, between, or after them |
 | `tool_allowlisted` | none | Every observed business tool call is listed for its calling agent |
 | `handoff_required` | optional `target` | A handoff exists, optionally to a matching target |
-| `final_response_contains` / `final_response_not_contains` | `text` string or list | Case-insensitive substring constraint on the last recorded assistant message |
+| `final_response_contains` / `final_response_not_contains` | `text` string or list | Case-insensitive constraint on the last recorded assistant message; a list requires every item for `contains` and none for `not_contains` |
 | `trace_complete` | optional `require_tool_trace` | Collection is complete and required tool evidence exists |
 | `final_state` | `equals` object | Final SUT context matches expected values |
 
