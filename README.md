@@ -107,6 +107,8 @@ gate --config config/gate.example.yaml score --report reports/runs/<run-id>.json
 
 需要真实模型 smoke 时，手动运行 `Live SUT smoke` workflow，并显式勾选开关、配置 GitHub `DEEPSEEK_API_KEY` secret。它只对锁定的 SUT SHA 执行 AIR-01；该调用会产生模型费用，不是普通 PR required check。
 
+`main` 的强制阻断还需要仓库 ruleset：要求 PR，并把 `Critical behavior rules (offline fixture)` 设为 required check，同时禁止 force push 和删除分支。配置源文件、应用脚本（需要管理员 token）和验证步骤见 [Main 分支合并阻断](docs/branch-protection.md)。它保护的是 Gate 的 PR；SUT 仍通过 `config/sut.lock.yaml` 固定 revision，真实模型 smoke 手动运行，不需要修改 SUT 仓库。
+
 ## 本地 Web 控制台（P9）
 
 需要 Python 3.12+、Node.js 20.9+ 和 npm。首次在仓库根目录同步 Gate 环境并启动 API：

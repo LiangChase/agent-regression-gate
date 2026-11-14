@@ -17,6 +17,8 @@ permissions:
 
 jobs:
   deterministic-gate:
+    # This job name is a required status check in the main ruleset.
+    # Renaming it requires updating .github/rulesets/main-branch-protection.json.
     name: Critical behavior rules (offline fixture)
     runs-on: ubuntu-latest
     timeout-minutes: 10
