@@ -607,6 +607,12 @@ jobs:
 5.  不要在 CI 日志打印 API key、用户数据或完整敏感工具结果。
 6.  先用 deterministic mock SUT 保证 CI 稳定，再加真实 SUT integration
     job；不要让外部模型 API 成为默认必需条件。
+7.  **发布前 real-SUT gate（2026-11-14 扩展）：** 普通 PR 仍只跑
+    deterministic fixture；在 release workflow 中增加 `live-sut-gate`，
+    按 `sut.lock.yaml` checkout 真实 SUT，运行关键用例子集，N=3 次采样。
+    critical 断言在 2/3 次运行中失败判为回归；1/3 失败判为 flaky；两者都
+    阻断发布。该 gate 不作为普通 PR required check，避免模型密钥、成本
+    和随机性进入日常 PR。
 
 **必须制作的演示**
 

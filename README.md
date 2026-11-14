@@ -110,6 +110,17 @@ gate --config config/gate.example.yaml score --report reports/runs/<run-id>.json
 
 `main` 已启用仓库 ruleset `protect-main-regression-gate`：要求 PR，把 `Critical behavior rules (offline fixture)` 设为 required check，并禁止 force push 和删除分支。现在直接 push `main` 会被拒绝。配置源文件、应用脚本和验证步骤见 [Main 分支合并阻断](docs/branch-protection.md)。它保护的是 Gate 的 PR；SUT 仍通过 `config/sut.lock.yaml` 固定 revision，真实模型 smoke 手动运行，不需要修改 SUT 仓库。
 
+## 发布前 live SUT gate
+
+普通 PR 仍然只运行确定性 fixture，不依赖模型密钥。发布前则必须通过真实 SUT 行为门禁：
+
+- `Release` workflow 必须先执行 `live-sut-gate`，失败时不会创建 GitHub Release/tag；
+- `live-sut-gate` 按 `config/sut.lock.yaml` checkout 真实 SUT，运行 AIR-01/03/05/10/15；
+- 默认采样 3 次：critical 断言 2/3 失败判为回归，1/3 失败判为 flaky，两者都阻断发布；
+- 需要 `DEEPSEEK_API_KEY`，会产生模型费用；AIR-07 暂不纳入该门禁。
+
+详细设计见 [发布前 live SUT gate](docs/live-sut-release-gate.md)。
+
 ## 本地 Web 控制台（P9）
 
 需要 Python 3.12+、Node.js 20.9+ 和 npm。首次在仓库根目录同步 Gate 环境并启动 API：

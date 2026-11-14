@@ -1,0 +1,144 @@
+name: Live SUT gate
+
+on:
+  workflow_call:
+    inputs:
+      runs:
+        description: Number of live samples
+        required: false
+        type: number
+        default: 3
+    secrets:
+      DEEPSEEK_API_KEY:
+        required: true
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: Number of live samples
+        required: false
+        type: number
+        default: 3
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-sut-gate-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  live-sut-gate:
+    name: live-sut-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RUNS: ${{ inputs.runs }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read pinned SUT revision
+        id: sut-lock
+        run: |
+          REVISION=$(awk '/^[[:space:]]*revision:/{print $2; exit}' config/sut.lock.yaml | tr -d '\r')
+          test -n "$REVISION" || (echo "config/sut.lock.yaml is missing a pinned revision" && exit 1)
+          echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout pinned SUT
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ steps.sut-lock.outputs.revision }}
+          path: sut
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Require the DeepSeek secret
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: test -n "$DEEPSEEK_API_KEY" || (echo "Set repository secret DEEPSEEK_API_KEY before running the live SUT gate." && exit 1)
+
+      - name: Install Gate dependencies
+        run: uv sync --locked --no-dev
+
+      - name: Install SUT dependencies in an isolated venv
+        working-directory: sut/python-backend
+        run: |
+          python -m venv .ci-venv
+          .ci-venv/bin/python -m pip install --upgrade pip
+          .ci-venv/bin/python -m pip install -r requirements.txt
+
+      - name: Start the pinned SUT
+        working-directory: sut/python-backend
+        env:
+          LLM_PROVIDER: deepseek
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK_MODEL: deepseek-flash
+          AGENT_RESPONSE_LANGUAGE: zh-CN
+        run: |
+          .ci-venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8000 > /tmp/sut.log 2>&1 &
+          echo $! > /tmp/sut.pid
+          python - <<'PY'
+          import time, urllib.request
+          for _ in range(90):
+              try:
+                  with urllib.request.urlopen("http://127.0.0.1:8000/health", timeout=1) as response:
+                      if response.status == 200:
+                          break
+              except OSError:
+                  time.sleep(1)
+          else:
+              raise SystemExit("SUT did not become healthy")
+          PY
+
+      - name: Run live samples
+        env:
+          GATE_SUT_BASE_URL: http://127.0.0.1:8000
+          GATE_SUT_REVISION: ${{ steps.sut-lock.outputs.revision }}
+          GATE_MODEL_PROVIDER: deepseek
+          GATE_MODEL_EXECUTION_MODE: live
+        run: |
+          mkdir -p reports/live-gate
+          set +e
+          for i in $(seq 1 "$RUNS"); do
+            uv run gate --config config/gate.example.yaml run \
+              --case AIR-01 --case AIR-03 --case AIR-05 --case AIR-10 --case AIR-15 \
+              --fail-on critical --output "reports/live-gate/sample-$i"
+            echo "$i:$?" >> reports/live-gate/exits.txt
+          done
+          set -e
+
+      - name: Evaluate live samples
+        run: |
+          uv run python scripts/evaluate_live_samples.py \
+            --reports reports/live-gate/sample-*.json \
+            --expected-runs "$RUNS" \
+            --fail-threshold 2 \
+            --summary reports/live-gate/summary.json
+
+      - name: Write job summary
+        if: always()
+        run: |
+          if [ -f reports/live-gate/summary.md ]; then
+            cat reports/live-gate/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload live gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-sut-gate-${{ github.run_id }}
+          if-no-files-found: warn
+          path: |
+            reports/live-gate/
+            reports/traces/
+            /tmp/sut.log
+
+      - name: Stop the SUT
+        if: always()
+        run: |
+          if [ -f /tmp/sut.pid ]; then
+            kill "$(cat /tmp/sut.pid)" 2>/dev/null || true
+          fi
