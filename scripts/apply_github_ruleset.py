@@ -1,8 +1,8 @@
 """Validate, inspect, or apply the main-branch ruleset for the Gate repository.
 
-The ruleset requires the `deterministic-gate` job check defined by the Gate PR
-workflow. Applying it requires a GitHub token with Administration read/write
-access; `dry-run` and `check` do not modify anything.
+The ruleset requires the deterministic PR gate and the live SUT gate. Applying
+it requires a GitHub token with Administration read/write access; `dry-run` and
+`check` do not modify anything.
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
@@ -26,14 +27,29 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_RULESET = REPO_ROOT / ".github" / "rulesets" / "main-branch-protection.json"
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "regression.yml"
 GATE_JOB_ID = "deterministic-gate"
+LIVE_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "live-sut-gate.yml"
+LIVE_JOB_ID = "live-sut-gate"
 
 
-def extract_job_name(workflow_path: Path = WORKFLOW) -> str:
+def extract_job_name(
+    workflow_path: Path = WORKFLOW, job_id: str = GATE_JOB_ID
+) -> str:
     document = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
-    name = document.get("jobs", {}).get(GATE_JOB_ID, {}).get("name")
+    name = document.get("jobs", {}).get(job_id, {}).get("name")
     if not isinstance(name, str) or not name.strip():
-        raise ValueError(f"Workflow job '{GATE_JOB_ID}' has no stable name.")
+        raise ValueError(f"Workflow job '{job_id}' has no stable name.")
     return name
+
+
+def extract_required_job_names() -> list[str]:
+    return [
+        extract_job_name(WORKFLOW, GATE_JOB_ID),
+        extract_job_name(LIVE_WORKFLOW, LIVE_JOB_ID),
+    ]
+
+
+def normalize_job_names(job_names: str | Iterable[str]) -> list[str]:
+    return [job_names] if isinstance(job_names, str) else list(job_names)
 
 
 def load_ruleset(path: Path = DEFAULT_RULESET) -> dict[str, Any]:
@@ -43,7 +59,9 @@ def load_ruleset(path: Path = DEFAULT_RULESET) -> dict[str, Any]:
     return payload
 
 
-def validate_ruleset(payload: dict[str, Any], job_name: str) -> list[str]:
+def validate_ruleset(
+    payload: dict[str, Any], job_names: str | Iterable[str]
+) -> list[str]:
     errors: list[str] = []
     if not payload.get("name"):
         errors.append("ruleset name is required")
@@ -79,10 +97,11 @@ def validate_ruleset(payload: dict[str, Any], job_name: str) -> list[str]:
         for item in parameters.get("required_status_checks", [])
         if isinstance(item, dict)
     ]
-    if job_name not in contexts:
-        errors.append(
-            f"required status check must include the workflow job name '{job_name}'"
-        )
+    for job_name in normalize_job_names(job_names):
+        if job_name not in contexts:
+            errors.append(
+                f"required status check must include the workflow job name '{job_name}'"
+            )
     if parameters.get("strict_required_status_checks_policy") is not True:
         errors.append("strict_required_status_checks_policy must be true")
 
@@ -151,22 +170,22 @@ def find_ruleset(repo: str, token: str | None, name: str) -> dict[str, Any] | No
 
 def command_dry_run(args: argparse.Namespace) -> int:
     payload = load_ruleset(args.ruleset_file)
-    job_name = extract_job_name()
-    errors = validate_ruleset(payload, job_name)
+    job_names = extract_required_job_names()
+    errors = validate_ruleset(payload, job_names)
     print(json.dumps(payload, ensure_ascii=False, indent=2))
     if errors:
         print("\nValidation failed:", file=sys.stderr)
         for error in errors:
             print(f"- {error}", file=sys.stderr)
         return 1
-    print(f"\nValidation OK. Required check: {job_name}")
+    print(f"\nValidation OK. Required checks: {', '.join(job_names)}")
     return 0
 
 
 def command_check(args: argparse.Namespace) -> int:
     payload = load_ruleset(args.ruleset_file)
-    job_name = extract_job_name()
-    errors = validate_ruleset(payload, job_name)
+    job_names = extract_required_job_names()
+    errors = validate_ruleset(payload, job_names)
     if errors:
         print("Local ruleset file is invalid:", file=sys.stderr)
         for error in errors:
@@ -185,21 +204,21 @@ def command_check(args: argparse.Namespace) -> int:
         print(f"FAIL: ruleset '{payload['name']}' is not active on {repo}.")
         return 3
 
-    remote_errors = validate_ruleset(ruleset, job_name)
+    remote_errors = validate_ruleset(ruleset, job_names)
     if remote_errors:
         print("FAIL: active ruleset does not match the local configuration:")
         for error in remote_errors:
             print(f"- {error}")
         return 1
     print(f"PASS: main is protected by ruleset '{payload['name']}'.")
-    print(f"Required check: {job_name}")
+    print(f"Required checks: {', '.join(job_names)}")
     return 0
 
 
 def command_apply(args: argparse.Namespace) -> int:
     payload = load_ruleset(args.ruleset_file)
-    job_name = extract_job_name()
-    errors = validate_ruleset(payload, job_name)
+    job_names = extract_required_job_names()
+    errors = validate_ruleset(payload, job_names)
     if errors:
         print("Refusing to apply an invalid ruleset:", file=sys.stderr)
         for error in errors:
@@ -223,7 +242,7 @@ def command_apply(args: argparse.Namespace) -> int:
     else:
         result = api_request("POST", f"/repos/{repo}/rulesets", token=token, payload=payload)
         print(f"Created ruleset '{payload['name']}' (id={result.get('id')}) on {repo}.")
-    print(f"Required check: {job_name}")
+    print(f"Required checks: {', '.join(job_names)}")
     return 0
 
 

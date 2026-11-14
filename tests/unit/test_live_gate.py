@@ -132,14 +132,51 @@ def test_case_error_or_incomplete_is_invalid():
     assert gate_error["status"] == "invalid"
 
 
-def test_live_workflow_contract():
+def test_live_workflow_is_manual_and_lock_triggered():
     document = yaml.safe_load(LIVE_WORKFLOW.read_text(encoding="utf-8"))
     triggers = document.get("on", document.get(True))
-    assert "workflow_call" in triggers
-    assert triggers["workflow_call"]["secrets"]["DEEPSEEK_API_KEY"]["required"] is True
+    assert "pull_request" in triggers
+    assert "workflow_dispatch" in triggers
+    assert "workflow_call" not in triggers
+    # A path-filtered workflow cannot be a reliable required check: unrelated
+    # PRs would stay pending. The workflow must run everywhere and select
+    # internally.
+    pull_request = triggers.get("pull_request") or {}
+    assert not pull_request.get("paths")
+
     job = document["jobs"]["live-sut-gate"]
     assert job["name"] == "live-sut-gate"
-    run_steps = [step for step in job["steps"] if step.get("name") == "Run live samples"]
+    steps = job["steps"]
+    scope = next(step for step in steps if step.get("name") == "Decide whether the live gate applies")
+    assert scope["id"] == "scope"
+    assert "config/sut.lock.yaml" in scope["run"]
+    assert "workflow_dispatch" in scope["run"]
+
+    live_steps = [
+        step
+        for step in steps
+        if step.get("name")
+        in {
+            "Read pinned SUT revision",
+            "Checkout pinned SUT",
+            "Set up Python",
+            "Set up uv",
+            "Require the DeepSeek secret",
+            "Install Gate dependencies",
+            "Install SUT dependencies in an isolated venv",
+            "Start the pinned SUT",
+            "Run live samples",
+            "Evaluate live samples",
+            "Write job summary",
+            "Upload live gate evidence",
+            "Stop the SUT",
+        }
+    ]
+    assert len(live_steps) == 13
+    for step in live_steps:
+        assert "steps.scope.outputs.run_live == 'true'" in step.get("if", "")
+
+    run_steps = [step for step in steps if step.get("name") == "Run live samples"]
     assert run_steps
     command = json.dumps(run_steps[0]["run"], ensure_ascii=False)
     for case_id in ("AIR-01", "AIR-03", "AIR-05", "AIR-10", "AIR-15"):
@@ -148,7 +185,5 @@ def test_live_workflow_contract():
     assert "evaluate_live_samples.py" in json.dumps(job, ensure_ascii=False)
 
 
-def test_release_workflow_requires_live_gate():
-    document = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
-    assert document["jobs"]["live-sut-gate"]["uses"].endswith("live-sut-gate.yml")
-    assert document["jobs"]["release"]["needs"] == "live-sut-gate"
+def test_release_concept_is_not_part_of_the_gate():
+    assert not RELEASE_WORKFLOW.exists()

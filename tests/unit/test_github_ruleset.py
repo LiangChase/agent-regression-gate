@@ -12,6 +12,7 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RULESET = REPO_ROOT / ".github" / "rulesets" / "main-branch-protection.json"
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "regression.yml"
+LIVE_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "live-sut-gate.yml"
 SCRIPT = REPO_ROOT / "scripts" / "apply_github_ruleset.py"
 
 
@@ -27,14 +28,18 @@ def ruleset_payload() -> dict:
     return json.loads(RULESET.read_text(encoding="utf-8"))
 
 
-def workflow_job_name() -> str:
-    document = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
-    return document["jobs"]["deterministic-gate"]["name"]
+def workflow_job_names() -> list[str]:
+    deterministic = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    live = yaml.safe_load(LIVE_WORKFLOW.read_text(encoding="utf-8"))
+    return [
+        deterministic["jobs"]["deterministic-gate"]["name"],
+        live["jobs"]["live-sut-gate"]["name"],
+    ]
 
 
-def test_ruleset_required_check_matches_workflow_job_name():
+def test_ruleset_required_checks_match_workflow_job_names():
     payload = ruleset_payload()
-    job_name = workflow_job_name()
+    job_names = workflow_job_names()
     checks = next(
         rule for rule in payload["rules"] if rule["type"] == "required_status_checks"
     )
@@ -42,7 +47,7 @@ def test_ruleset_required_check_matches_workflow_job_name():
         item["context"]
         for item in checks["parameters"]["required_status_checks"]
     ]
-    assert contexts == [job_name]
+    assert contexts == job_names
 
 
 def test_ruleset_targets_main_and_has_required_guardrails():
@@ -64,7 +69,7 @@ def test_ruleset_targets_main_and_has_required_guardrails():
 
 def test_validator_accepts_the_checked_in_ruleset():
     module = load_script()
-    assert module.validate_ruleset(ruleset_payload(), workflow_job_name()) == []
+    assert module.validate_ruleset(ruleset_payload(), workflow_job_names()) == []
 
 
 def test_validator_rejects_a_stale_required_check_name():
@@ -72,8 +77,17 @@ def test_validator_rejects_a_stale_required_check_name():
     payload = copy.deepcopy(ruleset_payload())
     checks = next(rule for rule in payload["rules"] if rule["type"] == "required_status_checks")
     checks["parameters"]["required_status_checks"][0]["context"] = "old job name"
-    errors = module.validate_ruleset(payload, workflow_job_name())
+    errors = module.validate_ruleset(payload, workflow_job_names())
     assert any("required status check" in error for error in errors)
+
+
+def test_validator_rejects_a_stale_live_gate_check_name():
+    module = load_script()
+    payload = copy.deepcopy(ruleset_payload())
+    checks = next(rule for rule in payload["rules"] if rule["type"] == "required_status_checks")
+    checks["parameters"]["required_status_checks"][1]["context"] = "old live job name"
+    errors = module.validate_ruleset(payload, workflow_job_names())
+    assert any("live-sut-gate" in error for error in errors)
 
 
 def test_dry_run_cli_does_not_require_a_token():
@@ -85,5 +99,6 @@ def test_dry_run_cli_does_not_require_a_token():
         check=False,
     )
     assert result.returncode == 0, result.stderr
-    assert workflow_job_name() in result.stdout
+    for job_name in workflow_job_names():
+        assert job_name in result.stdout
     assert '"target": "branch"' in result.stdout

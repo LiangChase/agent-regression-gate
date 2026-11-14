@@ -32,6 +32,9 @@
         "required_status_checks": [
           {
             "context": "Critical behavior rules (offline fixture)"
+          },
+          {
+            "context": "live-sut-gate"
           }
         ]
       }
