@@ -32,7 +32,9 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - name: Install Gate
-        run: uv sync --locked --no-dev
+        run: uv sync --locked --dev
+      - name: Run unit tests
+        run: uv run --no-sync pytest -q
       - name: Build the Web console
         working-directory: web
         run: |

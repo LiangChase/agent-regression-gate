@@ -57,6 +57,17 @@ gate --config config/gate.example.yaml run --fail-on critical
 
 默认只阻断 critical 断言失败；基础设施错误和不完整 trace 总是非零退出。报告在 `reports/runs/`，trace 在 `reports/traces/`。执行不会自动重试 SUT 请求，因为请求可能已经完成副作用。
 
+## 测试
+
+Gate 自身的判定逻辑有独立测试，不调用真实模型，也不依赖网络：
+
+```powershell
+uv sync --locked --dev
+uv run pytest -q
+```
+
+测试覆盖用例加载与校验、确定性 evaluator、trace 归一化和脱敏、基线对比以及本地 API。CI 会在确定性 fixture 之前运行这组测试；真实 SUT 的行为回归仍由 `gate run` 和 `Live SUT smoke` 覆盖。
+
 ## 基线与版本比较
 
 普通运行绝不更新 baseline。先审阅报告，再用说明保存：
