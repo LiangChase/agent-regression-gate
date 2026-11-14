@@ -19,6 +19,7 @@ from ..errors import GateError, TraceIncompleteError
 from ..evaluators import evaluate_case
 from ..models import CaseResult, ResultStatus, new_id, utc_now
 from ..reporting import ReportWriter
+from ..sut.base import SutAdapter
 from ..sut.chatkit_adapter import ChatKitAdapter
 from ..sut.lifecycle import SutLifecycle
 from ..tracing import TraceBundle, TraceStore, TurnCapture, normalize_trace
@@ -34,6 +35,8 @@ async def run_suite(
     fail_on: str = "critical",
     output: str | Path | None = None,
     run_id: str | None = None,
+    adapter: SutAdapter | None = None,
+    lifecycle: Any | None = None,
 ) -> tuple[dict[str, Any], Path, Path]:
     selected = list(cases)
     if not selected:
@@ -44,8 +47,10 @@ async def run_suite(
     started = utc_now()
     run_id = run_id or new_id()
     revision = _sut_revision()
-    adapter = ChatKitAdapter(config.sut)
-    lifecycle = SutLifecycle(config.sut, adapter)
+    if adapter is None:
+        adapter = ChatKitAdapter(config.sut)
+    if lifecycle is None:
+        lifecycle = SutLifecycle(config.sut, adapter)
     trace_store = TraceStore.from_config(config)
     case_results: list[dict[str, Any]] = []
     shutdown_warning: str | None = None
