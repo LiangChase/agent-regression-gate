@@ -1,16 +1,6 @@
 name: Live SUT gate
 
 on:
-  workflow_call:
-    inputs:
-      runs:
-        description: Number of live samples
-        required: false
-        type: number
-        default: 3
-    secrets:
-      DEEPSEEK_API_KEY:
-        required: true
   workflow_dispatch:
     inputs:
       runs:
@@ -18,6 +8,7 @@ on:
         required: false
         type: number
         default: 3
+  pull_request:
 
 permissions:
   contents: read
@@ -32,11 +23,41 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      RUNS: ${{ inputs.runs }}
+      RUNS: ${{ github.event.inputs.runs || 3 }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # A required status check must be produced for every PR. Path filters
+      # would leave non-matching PRs pending forever, so the workflow always
+      # runs and decides here whether a real SUT run is needed.
+      - name: Decide whether the live gate applies
+        id: scope
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run_live=true" >> "$GITHUB_OUTPUT"
+            echo "Manual run: the live SUT gate will run."
+            exit 0
+          fi
+          BASE="origin/${{ github.base_ref }}"
+          git fetch --no-tags origin "${{ github.base_ref }}"
+          if git diff --name-only "$BASE...HEAD" | grep -qx 'config/sut.lock.yaml'; then
+            echo "run_live=true" >> "$GITHUB_OUTPUT"
+            echo "config/sut.lock.yaml changed: the live SUT gate will run."
+          else
+            echo "run_live=false" >> "$GITHUB_OUTPUT"
+            echo "config/sut.lock.yaml unchanged: deterministic checks cover this PR."
+          fi
+
+      - name: Note that the live gate is not applicable
+        if: steps.scope.outputs.run_live != 'true'
+        run: |
+          echo "This PR does not change config/sut.lock.yaml." >> "$GITHUB_STEP_SUMMARY"
+          echo "The deterministic gate remains the required check for ordinary PRs." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Read pinned SUT revision
+        if: steps.scope.outputs.run_live == 'true'
         id: sut-lock
         run: |
           REVISION=$(awk '/^[[:space:]]*revision:/{print $2; exit}' config/sut.lock.yaml | tr -d '\r')
@@ -44,26 +65,35 @@ jobs:
           echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
 
       - name: Checkout pinned SUT
+        if: steps.scope.outputs.run_live == 'true'
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository }}
           ref: ${{ steps.sut-lock.outputs.revision }}
           path: sut
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        if: steps.scope.outputs.run_live == 'true'
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - uses: astral-sh/setup-uv@v6
+
+      - name: Set up uv
+        if: steps.scope.outputs.run_live == 'true'
+        uses: astral-sh/setup-uv@v6
 
       - name: Require the DeepSeek secret
+        if: steps.scope.outputs.run_live == 'true'
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: test -n "$DEEPSEEK_API_KEY" || (echo "Set repository secret DEEPSEEK_API_KEY before running the live SUT gate." && exit 1)
 
       - name: Install Gate dependencies
+        if: steps.scope.outputs.run_live == 'true'
         run: uv sync --locked --no-dev
 
       - name: Install SUT dependencies in an isolated venv
+        if: steps.scope.outputs.run_live == 'true'
         working-directory: sut/python-backend
         run: |
           python -m venv .ci-venv
@@ -71,6 +101,7 @@ jobs:
           .ci-venv/bin/python -m pip install -r requirements.txt
 
       - name: Start the pinned SUT
+        if: steps.scope.outputs.run_live == 'true'
         working-directory: sut/python-backend
         env:
           LLM_PROVIDER: deepseek
@@ -94,6 +125,7 @@ jobs:
           PY
 
       - name: Run live samples
+        if: steps.scope.outputs.run_live == 'true'
         env:
           GATE_SUT_BASE_URL: http://127.0.0.1:8000
           GATE_SUT_REVISION: ${{ steps.sut-lock.outputs.revision }}
@@ -111,6 +143,7 @@ jobs:
           set -e
 
       - name: Evaluate live samples
+        if: steps.scope.outputs.run_live == 'true'
         run: |
           uv run python scripts/evaluate_live_samples.py \
             --reports reports/live-gate/sample-*.json \
@@ -119,14 +152,14 @@ jobs:
             --summary reports/live-gate/summary.json
 
       - name: Write job summary
-        if: always()
+        if: always() && steps.scope.outputs.run_live == 'true'
         run: |
           if [ -f reports/live-gate/summary.md ]; then
             cat reports/live-gate/summary.md >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Upload live gate evidence
-        if: always()
+        if: always() && steps.scope.outputs.run_live == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: live-sut-gate-${{ github.run_id }}
@@ -137,7 +170,7 @@ jobs:
             /tmp/sut.log
 
       - name: Stop the SUT
-        if: always()
+        if: always() && steps.scope.outputs.run_live == 'true'
         run: |
           if [ -f /tmp/sut.pid ]; then
             kill "$(cat /tmp/sut.pid)" 2>/dev/null || true

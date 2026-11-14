@@ -67,7 +67,7 @@ uv sync --locked --dev
 uv run pytest -q
 ```
 
-测试覆盖用例加载与校验、确定性 evaluator、trace 归一化和脱敏、基线对比以及本地 API。CI 会在确定性 fixture 之前运行这组测试；真实 SUT 的行为回归仍由 `gate run` 和 `Live SUT smoke` 覆盖。
+测试覆盖用例加载与校验、确定性 evaluator、trace 归一化和脱敏、基线对比以及本地 API。CI 会在确定性 fixture 之前运行这组测试；真实 SUT 的行为回归由 `gate run`、`live-sut-gate` 和轻量 `Live SUT smoke` 覆盖。
 
 ## 基线与版本比较
 
@@ -106,20 +106,20 @@ gate --config config/gate.example.yaml score --report reports/runs/<run-id>.json
 
 `Agent behavior regression gate` 工作流不依赖 API key：它用 `uv.lock` 锁定 Gate 依赖，启动仓库内的确定性 ChatKit fixture，运行完整 case 集，保存 AIR-15 通过 baseline，再注入越权工具调用验证 Gate 阻断，并生成 pass/block diff。各类报告都会作为 artifact 上传。手动触发时可勾选 `demonstrate_regression`，该 run 会因预期的 AIR-15 critical failure 变红，且仍上传失败证据。Fixture 只验证 Gate 的协议、trace、evaluator、比较、报告和退出码链路，不代表真实模型通过率。
 
-需要真实模型 smoke 时，手动运行 `Live SUT smoke` workflow，并显式勾选开关、配置 GitHub `DEEPSEEK_API_KEY` secret。它只对锁定的 SUT SHA 执行 AIR-01；该调用会产生模型费用，不是普通 PR required check。
+需要快速真实模型 smoke 时，手动运行 `Live SUT smoke` workflow，并显式勾选开关、配置 GitHub `DEEPSEEK_API_KEY` secret。它只对锁定的 SUT SHA 执行 AIR-01；该调用会产生模型费用。完整真实 SUT 门禁见下一节。
 
-`main` 已启用仓库 ruleset `protect-main-regression-gate`：要求 PR，把 `Critical behavior rules (offline fixture)` 设为 required check，并禁止 force push 和删除分支。现在直接 push `main` 会被拒绝。配置源文件、应用脚本和验证步骤见 [Main 分支合并阻断](docs/branch-protection.md)。它保护的是 Gate 的 PR；SUT 仍通过 `config/sut.lock.yaml` 固定 revision，真实模型 smoke 手动运行，不需要修改 SUT 仓库。
+`main` 已启用仓库 ruleset `protect-main-regression-gate`：要求 PR，把 `Critical behavior rules (offline fixture)` 设为 required check，并禁止 force push 和删除分支。现在直接 push `main` 会被拒绝。本次变更在 ruleset 配置中加入 `live-sut-gate`，合并后执行 apply 才会在 GitHub 上生效。配置源文件、应用脚本和验证步骤见 [Main 分支合并阻断](docs/branch-protection.md)。它保护的是 Gate 的 PR；SUT 仍通过 `config/sut.lock.yaml` 固定 revision，不需要修改 SUT 仓库。
 
-## 发布前 live SUT gate
+## 真实 SUT 门禁（lock 变更 PR / 手动）
 
-普通 PR 仍然只运行确定性 fixture，不依赖模型密钥。发布前则必须通过真实 SUT 行为门禁：
+普通 PR 仍然只运行确定性 fixture，不依赖模型密钥。`live-sut-gate` 在所有 PR 上产生 required check，但只有 `config/sut.lock.yaml` 变化时才启动真实 SUT；lock 未变化时快速成功退出：
 
-- `Release` workflow 必须先执行 `live-sut-gate`，失败时不会创建 GitHub Release/tag；
-- `live-sut-gate` 按 `config/sut.lock.yaml` checkout 真实 SUT，运行 AIR-01/03/05/10/15；
-- 默认采样 3 次：critical 断言 2/3 失败判为回归，1/3 失败判为 flaky，两者都阻断发布；
-- 需要 `DEEPSEEK_API_KEY`，会产生模型费用；AIR-07 暂不纳入该门禁。
+- lock 变更 PR 或手动触发时，按 `config/sut.lock.yaml` checkout 真实 SUT，运行 AIR-01/03/05/10/15；
+- 默认采样 3 次：critical 断言 2/3 失败判为 regression，1/3 失败判为 flaky，两者都阻断；
+- 需要 `DEEPSEEK_API_KEY`，会产生模型费用；AIR-07 暂不纳入该门禁；
+- 不创建 GitHub Release/tag：项目没有独立打包产物，门禁触发点是 SUT revision 的采用。
 
-详细设计见 [发布前 live SUT gate](docs/live-sut-release-gate.md)。
+详细设计见 [Live SUT 门禁](docs/live-sut-gate.md)。
 
 ## 本地 Web 控制台（P9）
 

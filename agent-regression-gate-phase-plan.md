@@ -434,18 +434,20 @@ P0–P5 组成最小可用的 CLI 本地闭环，P7 形成 CI 回归门禁。P9 
 - 恢复后检查通过；没有密钥的普通 PR 仍可运行核心门禁。
 - SUT 或 Gate 的版本变化能从报告中追溯。
 
-### P7 扩展：发布前 real-SUT gate（2026-11-14）
+### P7 扩展：lock 变更 real-SUT gate（2026-11-14）
 
-**目标：** 在不破坏普通 PR 稳定性的前提下，让真实 SUT 行为成为发布前的强制检查。
+**目标：** 在不破坏普通 PR 稳定性的前提下，让真实 SUT 行为在采用新 SUT revision 时成为强制检查。
 
 - 普通 PR 继续只运行 `deterministic-gate`（确定性 ChatKit fixture，无需模型密钥）。
-- 新增可复用 `live-sut-gate` workflow：按 `config/sut.lock.yaml` checkout 真实 SUT，运行 AIR-01/03/05/10/15。
-- 默认采样 N=3：critical 断言在 2/3 次运行中失败判为回归；1/3 次失败判为 flaky；两者都阻断发布。
-- 新增 `release.yml`：创建 GitHub Release/tag 前必须 `needs: live-sut-gate`；缺少 `DEEPSEEK_API_KEY` 时 fail closed。
+- `live-sut-gate` 作为 required check 在所有 PR 上产生结果，但只有 `config/sut.lock.yaml` 变化或手动触发时才启动真实 SUT；lock 未变化时快速成功退出。
+- lock 变化时按 `config/sut.lock.yaml` checkout 真实 SUT，运行 AIR-01/03/05/10/15。
+- 默认采样 N=3：critical 断言在 2/3 次运行中失败判为回归；1/3 次失败判为 flaky；两者都阻断。
+- 缺少 `DEEPSEEK_API_KEY` 时 fail closed；lock 变更 PR 应来自同仓库分支。
+- 不引入 `release.yml`、GitHub Release 或 tag：项目没有独立打包产物，门禁触发点是 SUT revision 的采用。
 - 不修改 SUT 仓库；SUT 只作为 lock 固定的被测 revision。
 - 真实模型成本、超时和 flake 统计写入 workflow summary 和 artifact。
 
-**验收：** live gate 失败时 release 不会创建 tag；普通 PR 无密钥仍可通过 deterministic gate；flaky 和 regression 分类可区分。
+**验收：** 普通 PR 无密钥仍可通过 deterministic gate 和 no-op live gate；lock 变更 PR 的 live gate 失败时无法合并；flaky 和 regression 分类可区分；仓库中不存在 release/tag 流程。
 
 ### P8 — 文档、可复现演示与发布准备（5–7 小时）
 
