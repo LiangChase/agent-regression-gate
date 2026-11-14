@@ -1,6 +1,6 @@
 # Agent Regression Gate
 
-我为工具调用型 LLM Agent 构建了一套行为回归门禁，用于在 Prompt、模型、工具和权限策略变更后验证关键行为，并在高风险回归时阻断合并。
+我为工具调用型 LLM Agent 构建了一套行为回归门禁，用于在 Prompt、模型、工具和权限策略变更后验证关键行为，并在高风险回归时阻断 Gate 仓库的 PR 合并。
 
 航空客服 Demo 只是第一套 SUT 和用例载体。Gate 的核心是可审查的 cases、可追溯的 traces、确定性断言、可选语义评分、基线比较和 CI 门禁。
 
@@ -12,6 +12,7 @@
 - 可选地运行语义 Judge，评估事实依据、问题响应、动作诚实度和表达清晰度。Judge 结果仅作建议，不能覆盖 critical 确定性失败。
 - 在 GitHub Actions 中无模型密钥地复现确定性通过和越权工具调用阻断，并保留报告 artifact。
 - 使用单用户本地 Web 控制台浏览用例与运行、触发回归、查看 trace、下载报告和审核基线。
+- 支持独立对比页（每条运行独立选择基线）、运行归档/恢复、基线删除，以及对比报告 JSON/Markdown 下载和 Markdown 预览。
 
 ## 架构
 
@@ -107,7 +108,7 @@ gate --config config/gate.example.yaml score --report reports/runs/<run-id>.json
 
 需要真实模型 smoke 时，手动运行 `Live SUT smoke` workflow，并显式勾选开关、配置 GitHub `DEEPSEEK_API_KEY` secret。它只对锁定的 SUT SHA 执行 AIR-01；该调用会产生模型费用，不是普通 PR required check。
 
-`main` 的强制阻断还需要仓库 ruleset：要求 PR，并把 `Critical behavior rules (offline fixture)` 设为 required check，同时禁止 force push 和删除分支。配置源文件、应用脚本（需要管理员 token）和验证步骤见 [Main 分支合并阻断](docs/branch-protection.md)。它保护的是 Gate 的 PR；SUT 仍通过 `config/sut.lock.yaml` 固定 revision，真实模型 smoke 手动运行，不需要修改 SUT 仓库。
+`main` 已启用仓库 ruleset `protect-main-regression-gate`：要求 PR，把 `Critical behavior rules (offline fixture)` 设为 required check，并禁止 force push 和删除分支。现在直接 push `main` 会被拒绝。配置源文件、应用脚本和验证步骤见 [Main 分支合并阻断](docs/branch-protection.md)。它保护的是 Gate 的 PR；SUT 仍通过 `config/sut.lock.yaml` 固定 revision，真实模型 smoke 手动运行，不需要修改 SUT 仓库。
 
 ## 本地 Web 控制台（P9）
 
@@ -128,7 +129,7 @@ npm run dev
 
 浏览器打开 `http://127.0.0.1:3002`；API 文档在 `http://127.0.0.1:8001/api/docs`。Gate API 和 Next.js 均绑定 loopback。本地状态元数据保存在 `data/gate.sqlite3`，报告与 trace 仍按既有配置写入 `reports/`。重启可恢复已完成的历史；服务重启时尚未完成的任务会被标记为错误，不会自动重放可能带副作用的 SUT 请求。
 
-控制台不会编辑用例 YAML，也不会保存 API key；需要启动真实 SUT 时，按 SUT 契约单独配置和启动 SUT。尚未配置模型密钥时，SUT 仍可能无法执行真实模型请求。API 和页面流程见 [P9 API 契约](docs/api-contract.md) 与 [控制台流程](docs/web-console-flow.md)。
+控制台不会编辑用例 YAML，也不会保存 API key；需要启动真实 SUT 时，按 SUT 契约单独配置和启动 SUT。尚未配置模型密钥时，SUT 仍可能无法执行真实模型请求。控制台支持独立对比页、运行归档/恢复、基线删除和对比报告预览；归档不会删除报告、trace 或基线引用。API 和页面流程见 [P9 API 契约](docs/api-contract.md) 与 [控制台流程](docs/web-console-flow.md)。
 
 ## Case、Trace 与数据安全
 
@@ -144,4 +145,4 @@ npm run dev
 
 ## 已实现与限制
 
-P0–P9 覆盖本地执行、Web 控制台、trace、确定性评估、报告、比较、可选 Judge 和 CI 演示。PR fixture 为确定性契约样例；实时航空 Agent 输出仍受外部模型及其配置影响。Judge 质量需要结合模型、rubric 和人工抽查评估。P10 再评估持久化在线部署和多用户能力。
+P0–P9 覆盖本地执行、Web 控制台、trace、确定性评估、报告、比较、可选 Judge 和 CI 演示。Gate 仓库 `main` 已启用 required check；阻断对象是该仓库的 PR，不是 SUT 仓库的合并。PR fixture 为确定性契约样例；实时航空 Agent 输出仍受外部模型及其配置影响。Judge 质量需要结合模型、rubric 和人工抽查评估。P10 再评估持久化在线部署和多用户能力。
