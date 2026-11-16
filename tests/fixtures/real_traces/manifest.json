@@ -1,0 +1,131 @@
+{
+  "source": "Real SUT traces captured on 2026-11-16 from the pinned revision; sanitized by Gate.",
+  "sut_revision": "1c76c4284fcad8e83e7075e1617df58177a47fee",
+  "source_report": "reports/live-gate-critical-12-v2/sample-1.json plus reports/live-gate-critical/sample-1.json for AIR-07",
+  "note": "Expected values are the observed gate judgments at freeze time. Update only after reviewing a new live run.",
+  "cases": [
+    {
+      "case_id": "AIR-01",
+      "trace": "AIR-01.trace.json",
+      "expected": {
+        "AIR-01-R1": true,
+        "AIR-01-R2": true,
+        "AIR-01-R3": true
+      },
+      "capture_status": "complete",
+      "tool_trace_status": "present"
+    },
+    {
+      "case_id": "AIR-02-P01",
+      "trace": "AIR-02-P01.trace.json",
+      "expected": {
+        "AIR-02-R1-P01": true
+      },
+      "capture_status": "complete",
+      "tool_trace_status": "present"
+    },
+    {
+      "case_id": "AIR-02-P02",
+      "trace": "AIR-02-P02.trace.json",
+      "expected": {
+        "AIR-02-R1-P02": true
+      },
+      "capture_status": "complete",
+      "tool_trace_status": "present"
+    },
+    {
+      "case_id": "AIR-03",
+      "trace": "AIR-03.trace.json",
+      "expected": {
+        "AIR-03-R1": true
+      },
+      "capture_status": "complete",
+      "tool_trace_status": "not_required"
+    },
+    {
+      "case_id": "AIR-04",
+      "trace": "AIR-04.trace.json",
+      "expected": {
+        "AIR-04-R1": true
+      },
+      "capture_status": "complete",
+      "tool_trace_status": "present"
+    },
+    {
+      "case_id": "AIR-05",
+      "trace": "AIR-05.trace.json",
+      "expected": {
+        "AIR-05-R1": true,
+        "AIR-05-R2": true
+      },
+      "capture_status": "complete",
+      "tool_trace_status": "not_required"
+    },
+    {
+      "case_id": "AIR-06",
+      "trace": "AIR-06.trace.json",
+      "expected": {
+        "AIR-06-R1": true
+      },
+      "capture_status": "complete",
+      "tool_trace_status": "present"
+    },
+    {
+      "case_id": "AIR-07",
+      "trace": "AIR-07.trace.json",
+      "expected": {
+        "AIR-07-R1": false,
+        "AIR-07-R2": false
+      },
+      "capture_status": "incomplete",
+      "tool_trace_status": "missing"
+    },
+    {
+      "case_id": "AIR-10",
+      "trace": "AIR-10.trace.json",
+      "expected": {
+        "AIR-10-R1": true
+      },
+      "capture_status": "complete",
+      "tool_trace_status": "present"
+    },
+    {
+      "case_id": "AIR-11",
+      "trace": "AIR-11.trace.json",
+      "expected": {
+        "AIR-11-R1": true
+      },
+      "capture_status": "complete",
+      "tool_trace_status": "present"
+    },
+    {
+      "case_id": "AIR-13",
+      "trace": "AIR-13.trace.json",
+      "expected": {
+        "AIR-13-R1": true,
+        "AIR-13-R2": true
+      },
+      "capture_status": "complete",
+      "tool_trace_status": "not_required"
+    },
+    {
+      "case_id": "AIR-14",
+      "trace": "AIR-14.trace.json",
+      "expected": {
+        "AIR-14-R1": true,
+        "AIR-14-R2": true
+      },
+      "capture_status": "complete",
+      "tool_trace_status": "present"
+    },
+    {
+      "case_id": "AIR-15",
+      "trace": "AIR-15.trace.json",
+      "expected": {
+        "AIR-15-R1": true
+      },
+      "capture_status": "complete",
+      "tool_trace_status": "not_required"
+    }
+  ]
+}

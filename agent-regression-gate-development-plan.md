@@ -616,7 +616,8 @@ jobs:
     在 2/3 次运行中失败判为回归；1/3 失败判为 flaky；两者都阻断。普通 PR 的
     lock 未变化时 gate 直接成功，不依赖模型密钥、不产生模型费用。项目没有
     独立打包产物，因此不引入 release workflow 或 GitHub Release/tag；门禁
-    触发点是 SUT revision 的采用。
+    触发点是 SUT revision 的采用。Gate 自身判定语义另由冻结真实 trace 回放
+    测试保护，随普通 PR 的 pytest 运行，不调用模型。
 
 **必须制作的演示**
 

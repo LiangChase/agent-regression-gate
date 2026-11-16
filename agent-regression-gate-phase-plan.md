@@ -443,6 +443,7 @@ P0–P5 组成最小可用的 CLI 本地闭环，P7 形成 CI 回归门禁。P9 
 - lock 变化时按 `config/sut.lock.yaml` checkout 真实 SUT，运行全部 critical 用例；AIR-07 因已知零工具调用 flake 暂不纳入阻断门禁，当前实际覆盖 12 个具体实例（含 AIR-02 两个参数实例）。
 - 默认采样 N=3：critical 断言在 2/3 次运行中失败判为回归；1/3 次失败判为 flaky；两者都阻断。
 - 聚合阶段按 case 目录、risk 和显式排除项校验覆盖：任何期望的 critical case 未出现在某次采样报告中，判为 invalid 并阻断。
+- Gate 自身判定语义由 `tests/fixtures/real_traces/` 中冻结的真实 trace 回放保护，随普通 PR 的 pytest 运行，不调用模型。
 - 缺少 `DEEPSEEK_API_KEY` 时 fail closed；lock 变更 PR 应来自同仓库分支。
 - 不引入 `release.yml`、GitHub Release 或 tag：项目没有独立打包产物，门禁触发点是 SUT revision 的采用。
 - 不修改 SUT 仓库；SUT 只作为 lock 固定的被测 revision。
@@ -450,7 +451,7 @@ P0–P5 组成最小可用的 CLI 本地闭环，P7 形成 CI 回归门禁。P9 
 
 **验收：** 普通 PR 无密钥仍可通过 deterministic gate 和 no-op live gate；lock 变更 PR 的 live gate 失败时无法合并；flaky 和 regression 分类可区分；仓库中不存在 release/tag 流程。
 
-**覆盖扩展验证（2026-11-16）：** 本地真实 SUT 跑 12 个非 flaky critical 实例 × 3 次采样，聚合 `pass`，覆盖 12/12；AIR-05-R2 为 advisory；AIR-07 复现零工具调用 + trace incomplete，暂不纳入阻断集。
+**覆盖扩展验证（2026-11-16）：** 本地真实 SUT 跑 12 个非 flaky critical 实例 × 3 次采样，聚合 `pass`，覆盖 12/12；AIR-05-R2 为 advisory；AIR-07 复现零工具调用 + trace incomplete，暂不纳入阻断集。真实 trace 回放测试覆盖 13 个 critical（含 AIR-07 负例），全量 `107 passed`。
 
 ### P8 — 文档、可复现演示与发布准备（5–7 小时）
 

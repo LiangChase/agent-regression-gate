@@ -69,6 +69,8 @@ uv run pytest -q
 
 测试覆盖用例加载与校验、确定性 evaluator、trace 归一化和脱敏、基线对比以及本地 API。CI 会在确定性 fixture 之前运行这组测试；真实 SUT 的行为回归由 `gate run`、`live-sut-gate` 和轻量 `Live SUT smoke` 覆盖。
 
+测试还包含 [`tests/fixtures/real_traces/`](tests/fixtures/real_traces/) 中冻结的真实 SUT trace 回放：加载真实 trace → 当前 case → 确定性 evaluator，断言结果与冻结时一致。它不调用模型，但能防止 evaluator、trace contract 或 case 语义在真实 trace 形状上悄悄退化；刷新方式见该目录的 README。
+
 ## 基线与版本比较
 
 普通运行绝不更新 baseline。先审阅报告，再用说明保存：

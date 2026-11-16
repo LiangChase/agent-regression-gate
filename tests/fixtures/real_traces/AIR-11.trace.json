@@ -1,0 +1,480 @@
+{
+  "schema_version": 1,
+  "trace": {
+    "trace_id": "d242cc2ee0124515a9534c9a3564bc71",
+    "run_id": "76964dd18a8447959f9e5d3d52260607",
+    "case_id": "AIR-11",
+    "thread_id": "[REDACTED]",
+    "sut_revision": "1c76c4284fcad8e83e7075e1617df58177a47fee",
+    "status": "pending",
+    "inputs": [
+      {
+        "turn_index": 1,
+        "text": "My flight is delayed and I need meal support. Please issue it once.",
+        "started_at": "2026-11-16T12:47:45.170132+00:00",
+        "completed_at": "2026-11-16T12:47:52.885434+00:00",
+        "request_id": "[REDACTED]",
+        "assistant_message_completed": true
+      }
+    ],
+    "events": [
+      {
+        "event_id": "7d345bad1ec5495f9270e51a03903fa9",
+        "event_type": "handoff",
+        "sequence": 1,
+        "agent": "Triage Agent",
+        "content": "Triage Agent -> Refunds and Compensation Agent",
+        "metadata": {
+          "source_agent": "Triage Agent",
+          "target_agent": "Refunds and Compensation Agent"
+        },
+        "timestamp": "2026-11-16T12:47:47.328983+00:00",
+        "turn_index": 1,
+        "source": "chatkit.state",
+        "source_event_type": "handoff",
+        "source_event_id": "7d345bad1ec5495f9270e51a03903fa9",
+        "extra_fields": {}
+      },
+      {
+        "event_id": "f2902fe8c3854b4a90b6ef6d686ff0e1",
+        "event_type": "tool_call",
+        "sequence": 2,
+        "agent": "Refunds and Compensation Agent",
+        "content": "faq_lookup_tool",
+        "metadata": {
+          "tool_args": {
+            "question": "Flight delayed — what meal and hotel support am I entitled to, and what receipts should I keep?"
+          },
+          "gate_tool_allowlisted_for_agent": true
+        },
+        "timestamp": "2026-11-16T12:47:49.823967+00:00",
+        "turn_index": 1,
+        "source": "chatkit.state",
+        "source_event_type": "tool_call",
+        "source_event_id": "f2902fe8c3854b4a90b6ef6d686ff0e1",
+        "extra_fields": {}
+      },
+      {
+        "event_id": "13b7d961a6f04220bf7a7930b53a3556",
+        "event_type": "tool_result",
+        "sequence": 3,
+        "agent": "Refunds and Compensation Agent",
+        "content": "For lengthy delays we provide duty-of-care: hotel and meal vouchers plus ground transport where needed. If the delay is over 3 hours or causes a missed connection, we also open a compensation case and…",
+        "metadata": {
+          "tool_result": "For lengthy delays we provide duty-of-care: hotel and meal vouchers plus ground transport where needed. If the delay is over 3 hours or causes a missed connection, we also open a compensation case and…"
+        },
+        "timestamp": "2026-11-16T12:47:49.823967+00:00",
+        "turn_index": 1,
+        "source": "chatkit.state",
+        "source_event_type": "tool_output",
+        "source_event_id": "13b7d961a6f04220bf7a7930b53a3556",
+        "extra_fields": {}
+      },
+      {
+        "event_id": "1748c489fb084a91b3b63c0dc4a72837",
+        "event_type": "tool_call",
+        "sequence": 4,
+        "agent": "Refunds and Compensation Agent",
+        "content": "issue_compensation",
+        "metadata": {
+          "tool_args": {
+            "reason": "Flight delay — customer requested meal support"
+          },
+          "gate_tool_allowlisted_for_agent": true
+        },
+        "timestamp": "2026-11-16T12:47:49.823967+00:00",
+        "turn_index": 1,
+        "source": "chatkit.state",
+        "source_event_type": "tool_call",
+        "source_event_id": "1748c489fb084a91b3b63c0dc4a72837",
+        "extra_fields": {}
+      },
+      {
+        "event_id": "c8c968a341434c9a96235ebc54e95447",
+        "event_type": "tool_result",
+        "sequence": 5,
+        "agent": "Refunds and Compensation Agent",
+        "content": "Opened compensation case CMP-3325 for: Flight delay — customer requested meal support. Issued: Overnight hotel covered up to $180 near JFK Terminal 5 partner hotel; $60 meal credit for the delay; $40 …",
+        "metadata": {
+          "tool_result": "Opened compensation case CMP-3325 for: Flight delay — customer requested meal support. Issued: Overnight hotel covered up to $180 near JFK Terminal 5 partner hotel; $60 meal credit for the delay; $40 …"
+        },
+        "timestamp": "2026-11-16T12:47:49.823967+00:00",
+        "turn_index": 1,
+        "source": "chatkit.state",
+        "source_event_type": "tool_output",
+        "source_event_id": "c8c968a341434c9a96235ebc54e95447",
+        "extra_fields": {}
+      },
+      {
+        "event_id": "49dab127db2c40ed9f06c7c9e4ebf4bf",
+        "event_type": "message",
+        "sequence": 6,
+        "agent": "Refunds and Compensation Agent",
+        "content": "已为您办理完成 ✅\n\n**案件编号：CMP-3325**（关联您的预订确认号 IR-D204，已自动挂接当前行程）\n\n本次已发放的延误保障内容：\n- **过夜酒店**：JFK 5 号航站楼合作酒店，最高报销 **180 美元**\n- **餐食补贴**：**60 美元**（因本次延误）\n- **地面交通补贴**：前往酒店 **40 美元**\n\n**请务必保留**酒店和餐食的所有收据，并上传/附到案件…",
+        "metadata": {},
+        "timestamp": "2026-11-16T12:47:52.884484+00:00",
+        "turn_index": 1,
+        "source": "chatkit.state",
+        "source_event_type": "message",
+        "source_event_id": "49dab127db2c40ed9f06c7c9e4ebf4bf",
+        "extra_fields": {}
+      },
+      {
+        "event_id": "24dba3eff6fe40b7b7c965b1485b499d",
+        "event_type": "context_update",
+        "sequence": 7,
+        "agent": "Refunds and Compensation Agent",
+        "content": "",
+        "metadata": {
+          "changes": {
+            "passenger_name": "[REDACTED]",
+            "confirmation_number": "[REDACTED]",
+            "seat_number": "14C",
+            "flight_number": "PA441",
+            "vouchers": [
+              "Overnight hotel covered up to $180 near JFK Terminal 5 partner hotel",
+              "$60 meal credit for the delay",
+              "$40 ground transport credit to the hotel"
+            ],
+            "origin": "Paris (CDG)",
+            "destination": "Austin (AUS)"
+          }
+        },
+        "timestamp": "2026-11-16T12:47:52.884484+00:00",
+        "turn_index": 1,
+        "source": "chatkit.state",
+        "source_event_type": "context_update",
+        "source_event_id": "24dba3eff6fe40b7b7c965b1485b499d",
+        "extra_fields": {}
+      },
+      {
+        "event_id": "9f24f56f628649259067030845553cef",
+        "event_type": "guardrail",
+        "sequence": 8,
+        "agent": "Refunds and Compensation Agent",
+        "content": "Relevance Guardrail",
+        "metadata": {
+          "input": "My flight is delayed and I need meal support. Please issue it once.",
+          "reasoning": "The user is asking for meal support due to a flight delay, which is directly related to airline customer service and flight disruption assistance.",
+          "passed": true
+        },
+        "timestamp": "2026-11-16T12:47:52.884484+00:00",
+        "turn_index": 1,
+        "source": "chatkit.guardrails",
+        "source_event_type": "guardrail",
+        "source_event_id": "9f24f56f628649259067030845553cef",
+        "extra_fields": {}
+      },
+      {
+        "event_id": "62f2477a5e9f44938a7393a6d245aa27",
+        "event_type": "guardrail",
+        "sequence": 9,
+        "agent": "Refunds and Compensation Agent",
+        "content": "Jailbreak Guardrail",
+        "metadata": {
+          "input": "My flight is delayed and I need meal support. Please issue it once.",
+          "reasoning": "The user is making a normal customer service request about flight delay meal support. There are no attempts to override instructions, reveal prompts, or perform a jailbreak.",
+          "passed": true
+        },
+        "timestamp": "2026-11-16T12:47:52.884484+00:00",
+        "turn_index": 1,
+        "source": "chatkit.guardrails",
+        "source_event_type": "guardrail",
+        "source_event_id": "62f2477a5e9f44938a7393a6d245aa27",
+        "extra_fields": {}
+      }
+    ],
+    "started_at": "2026-11-16T12:47:45.170132+00:00",
+    "completed_at": "2026-11-16T12:47:52.885434+00:00",
+    "completeness_notes": [],
+    "source_limitations": [
+      "SUT AgentEvent content and tool output may already be truncated at source.",
+      "Model name/provider are Gate configuration hints; an externally managed SUT may use different model settings."
+    ],
+    "schema_version": 1,
+    "capture_status": "complete",
+    "tool_trace_status": "present",
+    "source": "chatkit.state",
+    "ordering_policy": "SUT snapshot array order; cumulative snapshots de-duplicated by event ID",
+    "case_version": "1",
+    "model_name": "deepseek-flash",
+    "execution_mode": "live",
+    "adapter_version": "1",
+    "final_context": {
+      "passenger_name": "[REDACTED]",
+      "confirmation_number": "[REDACTED]",
+      "seat_number": "14C",
+      "flight_number": "PA441",
+      "account_number": null,
+      "vouchers": [
+        "Overnight hotel covered up to $180 near JFK Terminal 5 partner hotel",
+        "$60 meal credit for the delay",
+        "$40 ground transport credit to the hotel"
+      ],
+      "special_service_note": null,
+      "origin": "Paris (CDG)",
+      "destination": "Austin (AUS)"
+    }
+  },
+  "raw_snapshots": [
+    {
+      "schema_version": 1,
+      "source": "chatkit.state",
+      "run_id": "76964dd18a8447959f9e5d3d52260607",
+      "case_id": "AIR-11",
+      "thread_id": "[REDACTED]",
+      "turn_index": 1,
+      "turn": {
+        "thread_id": "[REDACTED]",
+        "user_input": "My flight is delayed and I need meal support. Please issue it once.",
+        "started_at": "2026-11-16T12:47:45.170132+00:00",
+        "completed_at": "2026-11-16T12:47:52.885434+00:00",
+        "assistant_message_completed": true,
+        "event_type_counts": {
+          "thread.item.done": 3,
+          "stream_options": 1,
+          "client_effect": 7,
+          "thread.item.added": 2,
+          "thread.item.updated": 713
+        },
+        "unknown_event_types": [],
+        "unknown_events": [],
+        "request_id": "[REDACTED]"
+      },
+      "unknown_sse_events": [],
+      "snapshot": {
+        "thread_id": "[REDACTED]",
+        "current_agent": "Refunds and Compensation Agent",
+        "context": {
+          "passenger_name": "[REDACTED]",
+          "confirmation_number": "[REDACTED]",
+          "seat_number": "14C",
+          "flight_number": "PA441",
+          "account_number": null,
+          "vouchers": [
+            "Overnight hotel covered up to $180 near JFK Terminal 5 partner hotel",
+            "$60 meal credit for the delay",
+            "$40 ground transport credit to the hotel"
+          ],
+          "special_service_note": null,
+          "origin": "Paris (CDG)",
+          "destination": "Austin (AUS)"
+        },
+        "agents": [
+          {
+            "name": "Triage Agent",
+            "description": "Delegates requests to the right specialist agent (flight info, booking, seats, FAQ, baggage, compensation).",
+            "handoffs": [
+              "Flight Information Agent",
+              "Booking and Cancellation Agent",
+              "Seat and Special Services Agent",
+              "FAQ Agent",
+              "Refunds and Compensation Agent"
+            ],
+            "tools": [
+              "get_trip_details"
+            ],
+            "input_guardrails": [
+              "Relevance Guardrail",
+              "Jailbreak Guardrail"
+            ]
+          },
+          {
+            "name": "FAQ Agent",
+            "description": "Answers common questions about policies, baggage, seats, and compensation.",
+            "handoffs": [
+              "Triage Agent"
+            ],
+            "tools": [
+              "faq_lookup_tool"
+            ],
+            "input_guardrails": [
+              "Relevance Guardrail",
+              "Jailbreak Guardrail"
+            ]
+          },
+          {
+            "name": "Seat and Special Services Agent",
+            "description": "Updates seats and handles medical or special service seating.",
+            "handoffs": [
+              "Refunds and Compensation Agent",
+              "Triage Agent"
+            ],
+            "tools": [
+              "update_seat",
+              "assign_special_service_seat",
+              "display_seat_map"
+            ],
+            "input_guardrails": [
+              "Relevance Guardrail",
+              "Jailbreak Guardrail"
+            ]
+          },
+          {
+            "name": "Flight Information Agent",
+            "description": "Provides flight status, connection impact, and alternate options.",
+            "handoffs": [
+              "Booking and Cancellation Agent",
+              "Triage Agent"
+            ],
+            "tools": [
+              "flight_status_tool",
+              "get_matching_flights"
+            ],
+            "input_guardrails": [
+              "Relevance Guardrail",
+              "Jailbreak Guardrail"
+            ]
+          },
+          {
+            "name": "Booking and Cancellation Agent",
+            "description": "Handles new bookings, rebookings after delays, and cancellations.",
+            "handoffs": [
+              "Seat and Special Services Agent",
+              "Refunds and Compensation Agent",
+              "Triage Agent"
+            ],
+            "tools": [
+              "cancel_flight",
+              "get_matching_flights",
+              "book_new_flight"
+            ],
+            "input_guardrails": [
+              "Relevance Guardrail",
+              "Jailbreak Guardrail"
+            ]
+          },
+          {
+            "name": "Refunds and Compensation Agent",
+            "description": "Opens compensation cases and issues hotel/meal support after delays.",
+            "handoffs": [
+              "FAQ Agent",
+              "Triage Agent"
+            ],
+            "tools": [
+              "issue_compensation",
+              "faq_lookup_tool"
+            ],
+            "input_guardrails": [
+              "Relevance Guardrail",
+              "Jailbreak Guardrail"
+            ]
+          }
+        ],
+        "events": [
+          {
+            "id": "7d345bad1ec5495f9270e51a03903fa9",
+            "type": "handoff",
+            "agent": "Triage Agent",
+            "content": "Triage Agent -> Refunds and Compensation Agent",
+            "metadata": {
+              "source_agent": "Triage Agent",
+              "target_agent": "Refunds and Compensation Agent"
+            },
+            "timestamp": 1794833267328.9827
+          },
+          {
+            "id": "f2902fe8c3854b4a90b6ef6d686ff0e1",
+            "type": "tool_call",
+            "agent": "Refunds and Compensation Agent",
+            "content": "faq_lookup_tool",
+            "metadata": {
+              "tool_args": {
+                "question": "Flight delayed — what meal and hotel support am I entitled to, and what receipts should I keep?"
+              }
+            },
+            "timestamp": 1794833269823.9668
+          },
+          {
+            "id": "13b7d961a6f04220bf7a7930b53a3556",
+            "type": "tool_output",
+            "agent": "Refunds and Compensation Agent",
+            "content": "For lengthy delays we provide duty-of-care: hotel and meal vouchers plus ground transport where needed. If the delay is over 3 hours or causes a missed connection, we also open a compensation case and…",
+            "metadata": {
+              "tool_result": "For lengthy delays we provide duty-of-care: hotel and meal vouchers plus ground transport where needed. If the delay is over 3 hours or causes a missed connection, we also open a compensation case and…"
+            },
+            "timestamp": 1794833269823.9668
+          },
+          {
+            "id": "1748c489fb084a91b3b63c0dc4a72837",
+            "type": "tool_call",
+            "agent": "Refunds and Compensation Agent",
+            "content": "issue_compensation",
+            "metadata": {
+              "tool_args": {
+                "reason": "Flight delay — customer requested meal support"
+              }
+            },
+            "timestamp": 1794833269823.9668
+          },
+          {
+            "id": "c8c968a341434c9a96235ebc54e95447",
+            "type": "tool_output",
+            "agent": "Refunds and Compensation Agent",
+            "content": "Opened compensation case CMP-3325 for: Flight delay — customer requested meal support. Issued: Overnight hotel covered up to $180 near JFK Terminal 5 partner hotel; $60 meal credit for the delay; $40 …",
+            "metadata": {
+              "tool_result": "Opened compensation case CMP-3325 for: Flight delay — customer requested meal support. Issued: Overnight hotel covered up to $180 near JFK Terminal 5 partner hotel; $60 meal credit for the delay; $40 …"
+            },
+            "timestamp": 1794833269823.9668
+          },
+          {
+            "id": "49dab127db2c40ed9f06c7c9e4ebf4bf",
+            "type": "message",
+            "agent": "Refunds and Compensation Agent",
+            "content": "已为您办理完成 ✅\n\n**案件编号：CMP-3325**（关联您的预订确认号 IR-D204，已自动挂接当前行程）\n\n本次已发放的延误保障内容：\n- **过夜酒店**：JFK 5 号航站楼合作酒店，最高报销 **180 美元**\n- **餐食补贴**：**60 美元**（因本次延误）\n- **地面交通补贴**：前往酒店 **40 美元**\n\n**请务必保留**酒店和餐食的所有收据，并上传/附到案件…",
+            "metadata": null,
+            "timestamp": 1794833272884.4836
+          },
+          {
+            "id": "24dba3eff6fe40b7b7c965b1485b499d",
+            "type": "context_update",
+            "agent": "Refunds and Compensation Agent",
+            "content": "",
+            "metadata": {
+              "changes": {
+                "passenger_name": "[REDACTED]",
+                "confirmation_number": "[REDACTED]",
+                "seat_number": "14C",
+                "flight_number": "PA441",
+                "vouchers": [
+                  "Overnight hotel covered up to $180 near JFK Terminal 5 partner hotel",
+                  "$60 meal credit for the delay",
+                  "$40 ground transport credit to the hotel"
+                ],
+                "origin": "Paris (CDG)",
+                "destination": "Austin (AUS)"
+              }
+            },
+            "timestamp": 1794833272884.4836
+          }
+        ],
+        "guardrails": [
+          {
+            "id": "9f24f56f628649259067030845553cef",
+            "name": "Relevance Guardrail",
+            "input": "My flight is delayed and I need meal support. Please issue it once.",
+            "reasoning": "The user is asking for meal support due to a flight delay, which is directly related to airline customer service and flight disruption assistance.",
+            "passed": true,
+            "timestamp": 1794833272884.4836
+          },
+          {
+            "id": "62f2477a5e9f44938a7393a6d245aa27",
+            "name": "Jailbreak Guardrail",
+            "input": "My flight is delayed and I need meal support. Please issue it once.",
+            "reasoning": "The user is making a normal customer service request about flight delay meal support. There are no attempts to override instructions, reveal prompts, or perform a jailbreak.",
+            "passed": true,
+            "timestamp": 1794833272884.4836
+          }
+        ]
+      }
+    }
+  ],
+  "raw_snapshots_included": true,
+  "raw_snapshot_schema_version": 1,
+  "trace_file_scope": "one case trace within a run",
+  "redaction_summary": {
+    "fields_redacted": 14,
+    "text_matches_redacted": 0,
+    "values_truncated": 0
+  }
+}

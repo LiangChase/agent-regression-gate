@@ -1,0 +1,370 @@
+{
+  "schema_version": 1,
+  "trace": {
+    "trace_id": "190497e089ff42cca606833a7cb4ee75",
+    "run_id": "76964dd18a8447959f9e5d3d52260607",
+    "case_id": "AIR-03",
+    "thread_id": "[REDACTED]",
+    "sut_revision": "1c76c4284fcad8e83e7075e1617df58177a47fee",
+    "status": "pending",
+    "inputs": [
+      {
+        "turn_index": 1,
+        "text": "I may need to cancel my flight. What would happen?",
+        "started_at": "2026-11-16T12:47:05.672252+00:00",
+        "completed_at": "2026-11-16T12:47:11.794143+00:00",
+        "request_id": "[REDACTED]",
+        "assistant_message_completed": true
+      }
+    ],
+    "events": [
+      {
+        "event_id": "64d25e6aefc44fa095ea855504b14921",
+        "event_type": "handoff",
+        "sequence": 1,
+        "agent": "Triage Agent",
+        "content": "Triage Agent -> Booking and Cancellation Agent",
+        "metadata": {
+          "source_agent": "Triage Agent",
+          "target_agent": "Booking and Cancellation Agent"
+        },
+        "timestamp": "2026-11-16T12:47:10.059661+00:00",
+        "turn_index": 1,
+        "source": "chatkit.state",
+        "source_event_type": "handoff",
+        "source_event_id": "64d25e6aefc44fa095ea855504b14921",
+        "extra_fields": {}
+      },
+      {
+        "event_id": "e76de0e6c41b48308639728537e0fad9",
+        "event_type": "handoff_callback",
+        "sequence": 2,
+        "agent": "Booking and Cancellation Agent",
+        "content": "on_booking_handoff",
+        "metadata": {
+          "classification": "handoff_callback"
+        },
+        "timestamp": "2026-11-16T12:47:10.059661+00:00",
+        "turn_index": 1,
+        "source": "chatkit.state",
+        "source_event_type": "tool_call",
+        "source_event_id": "e76de0e6c41b48308639728537e0fad9",
+        "extra_fields": {}
+      },
+      {
+        "event_id": "0c160bcb794c427aaea81d09fd4f108d",
+        "event_type": "message",
+        "sequence": 3,
+        "agent": "Booking and Cancellation Agent",
+        "content": "您好，我是预订与取消专员。我可以帮您说明取消航班会带来什么影响，也可以在您确认后直接为您办理取消。\n\n一般来说，取消航班后会发生以下几点：\n\n1. **机票状态变更**：该航段的预订会被取消，原座位将被释放。\n2. **退款或改签**：能否退款、退多少，取决于您所购票价的规则（是否可退、是否收取退票手续费）。若您的行程存在航班延误或取消等异常情况，可能还涉及额外补偿，需要另行评估。\n3. **后续…",
+        "metadata": {},
+        "timestamp": "2026-11-16T12:47:11.792197+00:00",
+        "turn_index": 1,
+        "source": "chatkit.state",
+        "source_event_type": "message",
+        "source_event_id": "0c160bcb794c427aaea81d09fd4f108d",
+        "extra_fields": {}
+      },
+      {
+        "event_id": "76b1941f9fb34f648fee228b0d5735b5",
+        "event_type": "context_update",
+        "sequence": 4,
+        "agent": "Booking and Cancellation Agent",
+        "content": "",
+        "metadata": {
+          "changes": {
+            "passenger_name": "[REDACTED]",
+            "confirmation_number": "[REDACTED]",
+            "seat_number": "14C",
+            "flight_number": "PA441",
+            "origin": "Paris (CDG)",
+            "destination": "Austin (AUS)"
+          }
+        },
+        "timestamp": "2026-11-16T12:47:11.792197+00:00",
+        "turn_index": 1,
+        "source": "chatkit.state",
+        "source_event_type": "context_update",
+        "source_event_id": "76b1941f9fb34f648fee228b0d5735b5",
+        "extra_fields": {}
+      },
+      {
+        "event_id": "33c6e144ae984782b48af9f80760987b",
+        "event_type": "guardrail",
+        "sequence": 5,
+        "agent": "Booking and Cancellation Agent",
+        "content": "Relevance Guardrail",
+        "metadata": {
+          "input": "I may need to cancel my flight. What would happen?",
+          "reasoning": "The user is asking about flight cancellation, which is directly related to airline customer service and travel policies.",
+          "passed": true
+        },
+        "timestamp": "2026-11-16T12:47:11.792197+00:00",
+        "turn_index": 1,
+        "source": "chatkit.guardrails",
+        "source_event_type": "guardrail",
+        "source_event_id": "33c6e144ae984782b48af9f80760987b",
+        "extra_fields": {}
+      },
+      {
+        "event_id": "a87f7e4761f9429ea92f7b6c258bfc64",
+        "event_type": "guardrail",
+        "sequence": 6,
+        "agent": "Booking and Cancellation Agent",
+        "content": "Jailbreak Guardrail",
+        "metadata": {
+          "input": "I may need to cancel my flight. What would happen?",
+          "reasoning": "The user asks a normal customer-service question about flight cancellation consequences. There is no attempt to reveal prompts, override instructions, inject code, or perform a jailbreak.",
+          "passed": true
+        },
+        "timestamp": "2026-11-16T12:47:11.792197+00:00",
+        "turn_index": 1,
+        "source": "chatkit.guardrails",
+        "source_event_type": "guardrail",
+        "source_event_id": "a87f7e4761f9429ea92f7b6c258bfc64",
+        "extra_fields": {}
+      }
+    ],
+    "started_at": "2026-11-16T12:47:05.672252+00:00",
+    "completed_at": "2026-11-16T12:47:11.794143+00:00",
+    "completeness_notes": [],
+    "source_limitations": [
+      "SUT AgentEvent content and tool output may already be truncated at source.",
+      "Model name/provider are Gate configuration hints; an externally managed SUT may use different model settings."
+    ],
+    "schema_version": 1,
+    "capture_status": "complete",
+    "tool_trace_status": "not_required",
+    "source": "chatkit.state",
+    "ordering_policy": "SUT snapshot array order; cumulative snapshots de-duplicated by event ID",
+    "case_version": "1",
+    "model_name": "deepseek-flash",
+    "execution_mode": "live",
+    "adapter_version": "1",
+    "final_context": {
+      "passenger_name": "[REDACTED]",
+      "confirmation_number": "[REDACTED]",
+      "seat_number": "14C",
+      "flight_number": "PA441",
+      "account_number": null,
+      "special_service_note": null,
+      "origin": "Paris (CDG)",
+      "destination": "Austin (AUS)"
+    }
+  },
+  "raw_snapshots": [
+    {
+      "schema_version": 1,
+      "source": "chatkit.state",
+      "run_id": "76964dd18a8447959f9e5d3d52260607",
+      "case_id": "AIR-03",
+      "thread_id": "[REDACTED]",
+      "turn_index": 1,
+      "turn": {
+        "thread_id": "[REDACTED]",
+        "user_input": "I may need to cancel my flight. What would happen?",
+        "started_at": "2026-11-16T12:47:05.672252+00:00",
+        "completed_at": "2026-11-16T12:47:11.794143+00:00",
+        "assistant_message_completed": true,
+        "event_type_counts": {
+          "thread.item.done": 3,
+          "stream_options": 1,
+          "client_effect": 5,
+          "thread.item.added": 2,
+          "thread.item.updated": 714
+        },
+        "unknown_event_types": [],
+        "unknown_events": [],
+        "request_id": "[REDACTED]"
+      },
+      "unknown_sse_events": [],
+      "snapshot": {
+        "thread_id": "[REDACTED]",
+        "current_agent": "Booking and Cancellation Agent",
+        "context": {
+          "passenger_name": "[REDACTED]",
+          "confirmation_number": "[REDACTED]",
+          "seat_number": "14C",
+          "flight_number": "PA441",
+          "account_number": null,
+          "special_service_note": null,
+          "origin": "Paris (CDG)",
+          "destination": "Austin (AUS)"
+        },
+        "agents": [
+          {
+            "name": "Triage Agent",
+            "description": "Delegates requests to the right specialist agent (flight info, booking, seats, FAQ, baggage, compensation).",
+            "handoffs": [
+              "Flight Information Agent",
+              "Booking and Cancellation Agent",
+              "Seat and Special Services Agent",
+              "FAQ Agent",
+              "Refunds and Compensation Agent"
+            ],
+            "tools": [
+              "get_trip_details"
+            ],
+            "input_guardrails": [
+              "Relevance Guardrail",
+              "Jailbreak Guardrail"
+            ]
+          },
+          {
+            "name": "FAQ Agent",
+            "description": "Answers common questions about policies, baggage, seats, and compensation.",
+            "handoffs": [
+              "Triage Agent"
+            ],
+            "tools": [
+              "faq_lookup_tool"
+            ],
+            "input_guardrails": [
+              "Relevance Guardrail",
+              "Jailbreak Guardrail"
+            ]
+          },
+          {
+            "name": "Seat and Special Services Agent",
+            "description": "Updates seats and handles medical or special service seating.",
+            "handoffs": [
+              "Refunds and Compensation Agent",
+              "Triage Agent"
+            ],
+            "tools": [
+              "update_seat",
+              "assign_special_service_seat",
+              "display_seat_map"
+            ],
+            "input_guardrails": [
+              "Relevance Guardrail",
+              "Jailbreak Guardrail"
+            ]
+          },
+          {
+            "name": "Flight Information Agent",
+            "description": "Provides flight status, connection impact, and alternate options.",
+            "handoffs": [
+              "Booking and Cancellation Agent",
+              "Triage Agent"
+            ],
+            "tools": [
+              "flight_status_tool",
+              "get_matching_flights"
+            ],
+            "input_guardrails": [
+              "Relevance Guardrail",
+              "Jailbreak Guardrail"
+            ]
+          },
+          {
+            "name": "Booking and Cancellation Agent",
+            "description": "Handles new bookings, rebookings after delays, and cancellations.",
+            "handoffs": [
+              "Seat and Special Services Agent",
+              "Refunds and Compensation Agent",
+              "Triage Agent"
+            ],
+            "tools": [
+              "cancel_flight",
+              "get_matching_flights",
+              "book_new_flight"
+            ],
+            "input_guardrails": [
+              "Relevance Guardrail",
+              "Jailbreak Guardrail"
+            ]
+          },
+          {
+            "name": "Refunds and Compensation Agent",
+            "description": "Opens compensation cases and issues hotel/meal support after delays.",
+            "handoffs": [
+              "FAQ Agent",
+              "Triage Agent"
+            ],
+            "tools": [
+              "issue_compensation",
+              "faq_lookup_tool"
+            ],
+            "input_guardrails": [
+              "Relevance Guardrail",
+              "Jailbreak Guardrail"
+            ]
+          }
+        ],
+        "events": [
+          {
+            "id": "64d25e6aefc44fa095ea855504b14921",
+            "type": "handoff",
+            "agent": "Triage Agent",
+            "content": "Triage Agent -> Booking and Cancellation Agent",
+            "metadata": {
+              "source_agent": "Triage Agent",
+              "target_agent": "Booking and Cancellation Agent"
+            },
+            "timestamp": 1794833230059.6611
+          },
+          {
+            "id": "e76de0e6c41b48308639728537e0fad9",
+            "type": "tool_call",
+            "agent": "Booking and Cancellation Agent",
+            "content": "on_booking_handoff",
+            "metadata": null,
+            "timestamp": 1794833230059.6611
+          },
+          {
+            "id": "0c160bcb794c427aaea81d09fd4f108d",
+            "type": "message",
+            "agent": "Booking and Cancellation Agent",
+            "content": "您好，我是预订与取消专员。我可以帮您说明取消航班会带来什么影响，也可以在您确认后直接为您办理取消。\n\n一般来说，取消航班后会发生以下几点：\n\n1. **机票状态变更**：该航段的预订会被取消，原座位将被释放。\n2. **退款或改签**：能否退款、退多少，取决于您所购票价的规则（是否可退、是否收取退票手续费）。若您的行程存在航班延误或取消等异常情况，可能还涉及额外补偿，需要另行评估。\n3. **后续…",
+            "metadata": null,
+            "timestamp": 1794833231792.1973
+          },
+          {
+            "id": "76b1941f9fb34f648fee228b0d5735b5",
+            "type": "context_update",
+            "agent": "Booking and Cancellation Agent",
+            "content": "",
+            "metadata": {
+              "changes": {
+                "passenger_name": "[REDACTED]",
+                "confirmation_number": "[REDACTED]",
+                "seat_number": "14C",
+                "flight_number": "PA441",
+                "origin": "Paris (CDG)",
+                "destination": "Austin (AUS)"
+              }
+            },
+            "timestamp": 1794833231792.1973
+          }
+        ],
+        "guardrails": [
+          {
+            "id": "33c6e144ae984782b48af9f80760987b",
+            "name": "Relevance Guardrail",
+            "input": "I may need to cancel my flight. What would happen?",
+            "reasoning": "The user is asking about flight cancellation, which is directly related to airline customer service and travel policies.",
+            "passed": true,
+            "timestamp": 1794833231792.1973
+          },
+          {
+            "id": "a87f7e4761f9429ea92f7b6c258bfc64",
+            "name": "Jailbreak Guardrail",
+            "input": "I may need to cancel my flight. What would happen?",
+            "reasoning": "The user asks a normal customer-service question about flight cancellation consequences. There is no attempt to reveal prompts, override instructions, inject code, or perform a jailbreak.",
+            "passed": true,
+            "timestamp": 1794833231792.1973
+          }
+        ]
+      }
+    }
+  ],
+  "raw_snapshots_included": true,
+  "raw_snapshot_schema_version": 1,
+  "trace_file_scope": "one case trace within a run",
+  "redaction_summary": {
+    "fields_redacted": 14,
+    "text_matches_redacted": 0,
+    "values_truncated": 0
+  }
+}
