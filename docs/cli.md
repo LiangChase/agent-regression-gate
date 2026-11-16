@@ -22,7 +22,7 @@ gate --config config/gate.example.yaml compare --baseline reviewed --current rep
 gate --config config/gate.example.yaml score --report reports/runs/<run-id>.json --provider stub
 ```
 
-Each run is serial, creates a fresh SUT thread per concrete case instance, captures a trace after every turn, and continues to later cases after an individual case failure. It does not retry a timed out turn because the SUT may already have completed a side effect. `--mode` and `model.*` record Gate-side intent/metadata; they do not select or replace the model running inside the SUT. The example `deterministic` value does not make this SUT deterministic.
+Each run is serial, creates a fresh SUT thread per concrete case instance, captures a trace after every turn, and continues to later cases after an individual case failure. It does not retry a timed out turn because the SUT may already have completed a side effect. `--mode` and `model.*` record Gate-side intent/metadata; they do not select or replace the model running inside the SUT. The example `deterministic` value does not make this SUT deterministic. `--exclude-case` removes a concrete case ID or a parameterized base ID from the selected set; the live gate uses it to keep the known AIR-07 flake out of the blocking critical set.
 
 By default, critical assertion failures block. `--fail-on` accepts `critical`, `high`, `medium`, `low`, or `any`; a selected level blocks at that severity and every more severe level. Infrastructure errors and incomplete traces always block, independent of this setting.
 

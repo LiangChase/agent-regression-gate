@@ -610,8 +610,10 @@ jobs:
 7.  **lock 变更 real-SUT gate（2026-11-14 扩展）：** 普通 PR 仍只跑
     deterministic fixture；`live-sut-gate` 作为 required check 在所有 PR
     上产生结果，但只有 `config/sut.lock.yaml` 变化或手动触发时才启动真实
-    SUT。按 lock checkout，运行关键用例子集，N=3 次采样。critical 断言在
-    2/3 次运行中失败判为回归；1/3 失败判为 flaky；两者都阻断。普通 PR 的
+    SUT。按 lock checkout，运行全部 critical 用例；AIR-07 因已知零工具调用
+    flake 暂不纳入阻断门禁，当前实际覆盖 12 个具体实例。N=3 次采样；聚合
+    阶段校验每份报告都覆盖全部期望的 critical case。critical 断言
+    在 2/3 次运行中失败判为回归；1/3 失败判为 flaky；两者都阻断。普通 PR 的
     lock 未变化时 gate 直接成功，不依赖模型密钥、不产生模型费用。项目没有
     独立打包产物，因此不引入 release workflow 或 GitHub Release/tag；门禁
     触发点是 SUT revision 的采用。

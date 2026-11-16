@@ -54,6 +54,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--config", dest="sub_config", help=argparse.SUPPRESS)
     run.add_argument("--cases-path", help="Override run.cases_path.")
     run.add_argument("--case", action="append", dest="case_ids", help="Case ID to include; repeatable.")
+    run.add_argument("--exclude-case", action="append", dest="exclude_case_ids", help="Case ID or base ID to exclude; repeatable.")
     run.add_argument("--tag", action="append", dest="tags", help="Case tag to include; repeatable.")
     run.add_argument("--risk", action="append", choices=("critical", "high", "medium", "low"), help="Risk level to include; repeatable.")
     run.add_argument("--mode", dest="run_mode", choices=("deterministic", "live"), help="Record intended SUT model mode.")
@@ -137,7 +138,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         if args.command == "run":
             collection = load_cases(config.run.cases_path)
-            selected = _select_cases(collection.cases, args.case_ids, args.tags, args.risk)
+            selected = _select_cases(
+                collection.cases,
+                args.case_ids,
+                args.tags,
+                args.risk,
+                args.exclude_case_ids,
+            )
             report, json_path, markdown_path = asyncio.run(
                 run_suite(config, selected, fail_on=args.fail_on, output=args.output)
             )
@@ -219,18 +226,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 12
 
 
-def _select_cases(cases, case_ids, tags, risks):
+def _select_cases(cases, case_ids, tags, risks, exclude_case_ids=None):
     known_ids = {case.id for case in cases}
     known_ids.update(case.base_id for case in cases if case.base_id)
     requested_ids = set(case_ids or [])
     missing_ids = requested_ids - known_ids
     if missing_ids:
         raise ConfigurationError(f"Unknown case id(s): {', '.join(sorted(missing_ids))}.")
+    excluded_ids = set(exclude_case_ids or [])
+    unknown_excluded = excluded_ids - known_ids
+    if unknown_excluded:
+        raise ConfigurationError(f"Unknown excluded case id(s): {', '.join(sorted(unknown_excluded))}.")
     selected = [
         case for case in cases
         if (not requested_ids or case.id in requested_ids or case.base_id in requested_ids)
         and (not tags or set(tags).intersection(case.tags))
         and (not risks or case.risk_level in risks)
+        and case.id not in excluded_ids
+        and (case.base_id or case.id) not in excluded_ids
     ]
     if not selected:
         raise ConfigurationError("Case filters matched no cases.")

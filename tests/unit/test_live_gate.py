@@ -53,9 +53,14 @@ def make_report(
     }
 
 
-def evaluate(reports, expected_runs=3):
+def evaluate(reports, expected_runs=3, expected_cases=None):
     module = load_script()
-    return module.evaluate(reports, expected_runs=expected_runs, fail_threshold=2)
+    return module.evaluate(
+        reports,
+        expected_runs=expected_runs,
+        fail_threshold=2,
+        expected_cases=expected_cases,
+    )
 
 
 def test_all_samples_pass():
@@ -132,6 +137,28 @@ def test_case_error_or_incomplete_is_invalid():
     assert gate_error["status"] == "invalid"
 
 
+def test_missing_expected_case_is_invalid():
+    result = evaluate(
+        [make_report(str(i), critical_passed=[True]) for i in range(3)],
+        expected_cases={"CASE-1", "CASE-2"},
+    )
+    assert result["status"] == "invalid"
+    assert result["exit_code"] == 2
+    assert result["coverage"]["expected_cases"] == ["CASE-1", "CASE-2"]
+    assert result["coverage"]["observed_cases"] == ["CASE-1"]
+    assert result["coverage"]["missing_cases"] == ["CASE-2"]
+    assert any(item.get("reason") == "missing_case" for item in result["infra_errors"])
+
+
+def test_present_expected_cases_keep_the_gate_green():
+    result = evaluate(
+        [make_report(str(i), critical_passed=[True]) for i in range(3)],
+        expected_cases={"CASE-1"},
+    )
+    assert result["status"] == "pass"
+    assert result["coverage"]["missing_cases"] == []
+
+
 def test_live_workflow_is_manual_and_lock_triggered():
     document = yaml.safe_load(LIVE_WORKFLOW.read_text(encoding="utf-8"))
     triggers = document.get("on", document.get(True))
@@ -179,10 +206,54 @@ def test_live_workflow_is_manual_and_lock_triggered():
     run_steps = [step for step in steps if step.get("name") == "Run live samples"]
     assert run_steps
     command = json.dumps(run_steps[0]["run"], ensure_ascii=False)
-    for case_id in ("AIR-01", "AIR-03", "AIR-05", "AIR-10", "AIR-15"):
-        assert case_id in command
-    assert "AIR-07" not in command
-    assert "evaluate_live_samples.py" in json.dumps(job, ensure_ascii=False)
+    # The workflow selects by risk so new critical cases are covered without
+    # maintaining a second hard-coded list.
+    assert "--risk critical" in command
+    assert "--exclude-case AIR-07" in command
+    assert "--case" not in command
+
+    evaluate_steps = [step for step in steps if step.get("name") == "Evaluate live samples"]
+    assert evaluate_steps
+    evaluation = json.dumps(evaluate_steps[0]["run"], ensure_ascii=False)
+    assert "--cases-path cases/airline" in evaluation
+    assert "--risk critical" in evaluation
+    assert "--exclude-case AIR-07" in evaluation
+    assert "evaluate_live_samples.py" in evaluation
+
+
+def test_live_selection_covers_all_non_flaky_critical_cases():
+    from agent_regression_gate.cases.loader import load_cases
+    from agent_regression_gate.cli import _select_cases
+
+    collection = load_cases(REPO_ROOT / "cases" / "airline")
+    critical = {case.id for case in collection.cases if case.risk_level == "critical"}
+    assert critical == {
+        "AIR-01",
+        "AIR-02-P01",
+        "AIR-02-P02",
+        "AIR-03",
+        "AIR-04",
+        "AIR-05",
+        "AIR-06",
+        "AIR-07",
+        "AIR-10",
+        "AIR-11",
+        "AIR-13",
+        "AIR-14",
+        "AIR-15",
+    }
+    assert len(critical) == 13
+
+    selected = _select_cases(
+        collection.cases,
+        case_ids=None,
+        tags=None,
+        risks=["critical"],
+        exclude_case_ids=["AIR-07"],
+    )
+    selected_ids = {case.id for case in selected}
+    assert selected_ids == critical - {"AIR-07"}
+    assert len(selected_ids) == 12
 
 
 def test_release_concept_is_not_part_of_the_gate():

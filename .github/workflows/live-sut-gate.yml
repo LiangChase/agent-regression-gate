@@ -21,7 +21,10 @@ jobs:
   live-sut-gate:
     name: live-sut-gate
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # All non-flaky critical cases are live-tested: 12 concrete instances x
+    # 3 samples. Each case can spend up to 120s, so the job needs more than
+    # the old five-case budget.
+    timeout-minutes: 60
     env:
       RUNS: ${{ github.event.inputs.runs || 3 }}
     steps:
@@ -134,9 +137,14 @@ jobs:
         run: |
           mkdir -p reports/live-gate
           set +e
+          # AIR-07 is a known SUT flake: the agent can hand off and answer
+          # without calling get_matching_flights, producing an incomplete
+          # trace. Keep it out of the blocking live set until the SUT
+          # behavior is hardened; it remains in the deterministic fixture
+          # and in local runs.
           for i in $(seq 1 "$RUNS"); do
             uv run gate --config config/gate.example.yaml run \
-              --case AIR-01 --case AIR-03 --case AIR-05 --case AIR-10 --case AIR-15 \
+              --risk critical --exclude-case AIR-07 \
               --fail-on critical --output "reports/live-gate/sample-$i"
             echo "$i:$?" >> reports/live-gate/exits.txt
           done
@@ -149,6 +157,9 @@ jobs:
             --reports reports/live-gate/sample-*.json \
             --expected-runs "$RUNS" \
             --fail-threshold 2 \
+            --cases-path cases/airline \
+            --risk critical \
+            --exclude-case AIR-07 \
             --summary reports/live-gate/summary.json
 
       - name: Write job summary
