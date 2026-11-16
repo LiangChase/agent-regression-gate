@@ -114,9 +114,10 @@ gate --config config/gate.example.yaml score --report reports/runs/<run-id>.json
 
 普通 PR 仍然只运行确定性 fixture，不依赖模型密钥。`live-sut-gate` 在所有 PR 上产生 required check，但只有 `config/sut.lock.yaml` 变化时才启动真实 SUT；lock 未变化时快速成功退出：
 
-- lock 变更 PR 或手动触发时，按 `config/sut.lock.yaml` checkout 真实 SUT，运行 AIR-01/03/05/10/15；
+- lock 变更 PR 或手动触发时，按 `config/sut.lock.yaml` checkout 真实 SUT，运行全部 critical 用例；AIR-07 因已知偶发“零工具调用 → trace incomplete”，暂不纳入阻断门禁，当前实际覆盖 12 个具体实例；
 - 默认采样 3 次：critical 断言 2/3 失败判为 regression，1/3 失败判为 flaky，两者都阻断；
-- 需要 `DEEPSEEK_API_KEY`，会产生模型费用；AIR-07 暂不纳入该门禁；
+- 聚合阶段会校验每一份采样报告是否覆盖全部期望的 critical case，缺任何一个直接判 `invalid`；
+- 需要 `DEEPSEEK_API_KEY`，会产生模型费用；12 × 3 = 36 次模型调用/轮，workflow 超时 60 分钟；
 - 不创建 GitHub Release/tag：项目没有独立打包产物，门禁触发点是 SUT revision 的采用。
 
 详细设计见 [Live SUT 门禁](docs/live-sut-gate.md)。

@@ -27,10 +27,13 @@ def evaluate(
     *,
     expected_runs: int,
     fail_threshold: int,
+    expected_cases: set[str] | None = None,
 ) -> dict[str, Any]:
     samples: dict[tuple[str, str], list[bool]] = defaultdict(list)
     severities: dict[tuple[str, str], str] = {}
     infra_errors: list[dict[str, Any]] = []
+    expected = set(expected_cases or set())
+    observed_cases: set[str] = set()
 
     if len(reports) < expected_runs:
         infra_errors.append(
@@ -56,8 +59,11 @@ def evaluate(
                     "incomplete": gate.get("incomplete", 0),
                 }
             )
+        seen_cases: set[str] = set()
         for case in report.get("cases", []) or []:
             case_id = str(case.get("case_id", ""))
+            seen_cases.add(case_id)
+            observed_cases.add(case_id)
             case_status = case.get("status")
             if case_status in {"error", "incomplete"}:
                 infra_errors.append(
@@ -73,6 +79,14 @@ def evaluate(
                 key = (case_id, assertion_id)
                 severities[key] = str(assertion.get("severity", "critical"))
                 samples[key].append(bool(assertion.get("passed", False)))
+        for case_id in sorted(expected - seen_cases):
+            infra_errors.append(
+                {
+                    "sample": index,
+                    "reason": "missing_case",
+                    "case_id": case_id,
+                }
+            )
 
     rows: list[dict[str, Any]] = []
     missing: list[dict[str, Any]] = []
@@ -137,6 +151,15 @@ def evaluate(
             "missing": len(missing),
             "infra_errors": len(infra_errors),
         },
+        "coverage": (
+            {
+                "expected_cases": sorted(expected),
+                "observed_cases": sorted(observed_cases),
+                "missing_cases": sorted(expected - observed_cases),
+            }
+            if expected
+            else None
+        ),
         "assertions": rows,
         "regressions": regressions,
         "flaky": flaky,
@@ -162,6 +185,19 @@ def render_markdown(result: dict[str, Any]) -> str:
             f"| {row['case_id']} | {row['assertion_id']} | {row['severity']} | "
             f"{row['passes']} | {row['failures']} | {row['classification']} |"
         )
+    coverage = result.get("coverage")
+    if coverage:
+        missing = coverage.get("missing_cases") or []
+        lines.extend(
+            [
+                "",
+                "## Coverage",
+                "",
+                f"- Expected cases: {len(coverage.get('expected_cases', []))}",
+                f"- Observed cases: {len(coverage.get('observed_cases', []))}",
+                f"- Missing cases: {', '.join(missing) if missing else 'none'}",
+            ]
+        )
     if result["infra_errors"]:
         lines.extend(["", "## Infrastructure errors", ""])
         for item in result["infra_errors"]:
@@ -174,6 +210,23 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--reports", nargs="+", type=Path, required=True)
     parser.add_argument("--expected-runs", type=int, default=3)
     parser.add_argument("--fail-threshold", type=int, default=2)
+    parser.add_argument(
+        "--cases-path",
+        type=Path,
+        help="Case file or directory used to derive the required coverage set.",
+    )
+    parser.add_argument(
+        "--risk",
+        action="append",
+        choices=("critical", "high", "medium", "low"),
+        help="Risk levels to require; repeatable and only valid with --cases-path.",
+    )
+    parser.add_argument(
+        "--exclude-case",
+        action="append",
+        dest="exclude_cases",
+        help="Case ID or base ID excluded from the required coverage set; repeatable.",
+    )
     parser.add_argument("--summary", type=Path, required=True)
     args = parser.parse_args(argv)
 
@@ -183,12 +236,40 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--fail-threshold must be at least 1")
     if args.fail_threshold > args.expected_runs:
         parser.error("--fail-threshold cannot exceed --expected-runs")
+    if args.risk and not args.cases_path:
+        parser.error("--risk requires --cases-path")
+
+    expected_cases: set[str] | None = None
+    if args.cases_path:
+        from agent_regression_gate.cases.loader import load_cases
+
+        collection = load_cases(args.cases_path)
+        risks = set(args.risk or [])
+        excluded = set(args.exclude_cases or [])
+        known = {case.id for case in collection.cases}
+        known.update(case.base_id for case in collection.cases if case.base_id)
+        unknown_excluded = excluded - known
+        if unknown_excluded:
+            parser.error(
+                "Unknown excluded case id(s): "
+                + ", ".join(sorted(unknown_excluded))
+            )
+        expected_cases = {
+            case.id
+            for case in collection.cases
+            if (not risks or case.risk_level in risks)
+            and case.id not in excluded
+            and (case.base_id or case.id) not in excluded
+        }
+        if not expected_cases:
+            parser.error("--cases-path/--risk selected no cases")
 
     reports = [_load_report(path) for path in args.reports]
     result = evaluate(
         reports,
         expected_runs=args.expected_runs,
         fail_threshold=args.fail_threshold,
+        expected_cases=expected_cases,
     )
     args.summary.parent.mkdir(parents=True, exist_ok=True)
     args.summary.write_text(

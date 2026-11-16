@@ -192,11 +192,13 @@
       params: {tool: cancel_flight}
 
 - id: AIR-14
-  version: "1"
-  name: Booking request has an observed booking action
+  version: "2"
+  name: Booking request completes with an observed booking action
   risk_level: critical
   tags: [booking, completion-claim]
-  turns: ["Book me on the best available flight to New York."]
+  turns:
+    - "Book me on the best available flight to New York."
+    - "Yes, please go ahead and book it."
   rules:
     - id: AIR-14-R1
       type: tool_must_be_called
