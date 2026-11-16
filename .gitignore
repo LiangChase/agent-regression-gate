@@ -33,6 +33,7 @@ baselines/local/**
 *.trace.jsonl
 *.run.json
 !docs/examples/**/*.trace.json
+!tests/fixtures/real_traces/*.trace.json
 
 # Editor / OS
 .idea/

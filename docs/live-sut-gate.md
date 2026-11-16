@@ -108,6 +108,16 @@ workflow 运行
 - AIR-05-R2（high）在 1/3 采样中失败，按策略记为 advisory；
 - AIR-07 在全 critical 单次验证中复现“零工具调用 + trace incomplete”，暂不纳入阻断集。
 
+## Gate 自身判定保护：真实 trace 回放
+
+[`tests/fixtures/real_traces/`](../tests/fixtures/real_traces/) 固化了本轮真实 SUT 的 13 个 critical trace（含 AIR-07 的 incomplete 负例）和冻结时的断言结果。`tests/integration/test_real_trace_replay.py` 在普通 `pytest` 中执行：
+
+```text
+真实 trace → 当前 case → 确定性 evaluator → 与冻结结果逐断言比较
+```
+
+它不调用模型、不依赖 live SUT，但每次 PR 都会运行。evaluator 语义、trace 字段形状或 case 规则发生非预期变化时会直接失败；刷新方式见该目录 README。AIR-07 的负例同时锁定了“trace incomplete 必须 fail closed”。
+
 ## 非目标
 
 - 不创建 GitHub Release 或 tag；
