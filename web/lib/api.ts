@@ -3,8 +3,23 @@ export type Case = { id: string; name: string; description: string; risk_level: 
 export type Dashboard = { recent_runs: Run[]; run_count: number; active_runs: number; pass_rate: number | null; critical_failures: number; sut_revision?: string; statuses: Record<string, number> };
 export type Baseline = { name: string; run_id: string; reason: string; saved_at: string; file_path: string };
 
+export const API_STATUS_EVENT = "gate-api-status";
+
+export function reportApiStatus(ok: boolean) {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(API_STATUS_EVENT, { detail: { ok } }));
+  }
+}
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, { ...init, headers: { ...(init?.body ? { "Content-Type": "application/json" } : {}), ...init?.headers }, cache: "no-store" });
+  let response: Response;
+  try {
+    response = await fetch(`/api${path}`, { ...init, headers: { ...(init?.body ? { "Content-Type": "application/json" } : {}), ...init?.headers }, cache: "no-store" });
+  } catch (error) {
+    reportApiStatus(false);
+    throw error;
+  }
+  reportApiStatus(response.status < 500);
   if (!response.ok) {
     let detail = `请求失败 (${response.status})`;
     try { const body = await response.json(); detail = body.detail || body.error || detail; } catch { /* use status */ }

@@ -44,7 +44,7 @@ function CaseList({ title, items }: { title: string; items?: string[] }) {
   </div>;
 }
 
-function CompareRow({ run, baselines, onOpen }: { run: Run; baselines: Baseline[]; onOpen: (id: string) => void }) {
+function CompareRow({ run, baselines, onOpen }: { run: Run; baselines: Baseline[]; onOpen: (id: string, trigger?: HTMLElement) => void }) {
   const [baseline, setBaseline] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -100,14 +100,14 @@ function CompareRow({ run, baselines, onOpen }: { run: Run; baselines: Baseline[
 
   return <div className="panel compare-row">
     <div className="compare-row-head">
-      <button className="run-link" onClick={() => onOpen(run.run_id)}>
+      <button className="run-link" onClick={event => onOpen(run.run_id, event.currentTarget)}>
         <b>{run.run_id.slice(0, 12)}</b>
         <small>{date(run.started_at || run.created_at)} · {run.case_count} 条用例</small>
       </button>
       <span className={`status-badge ${run.status}`}><i/>{statusLabel[run.status] || run.status}</span>
       {run.archived_at ? <span className="archived-pill">已归档</span> : null}
       <div className="compare-row-controls">
-        <select value={baseline} onChange={e => setBaseline(e.target.value)} disabled={busy || !finished}>
+        <select aria-label="选择对比基线" value={baseline} onChange={e => setBaseline(e.target.value)} disabled={busy || !finished}>
           <option value="">{finished ? "选择基线" : "运行未完成"}</option>
           {baselines.map(item => <option key={item.name} value={item.name}>{item.name}</option>)}
         </select>
@@ -117,18 +117,18 @@ function CompareRow({ run, baselines, onOpen }: { run: Run; baselines: Baseline[
       </div>
     </div>
     {error && <p className="error-copy compare-row-error">{error}</p>}
-    {result && counts && <div className="comparison-result compare-row-result">
+    {result && counts && <div className="comparison-result compare-row-result" role="status" aria-live="polite">
       <h4>对比结果：{result.status}</h4>
       <div className="diff-chips">
-        <span>新增失败 {counts.newFailures}</span>
-        <span>已修复 {counts.fixed}</span>
-        <span>持续失败 {counts.persistent}</span>
+        <span className="diff-new">新增失败 {counts.newFailures}</span>
+        <span className="diff-fixed">已修复 {counts.fixed}</span>
+        <span className="diff-persistent">持续失败 {counts.persistent}</span>
         <span>结果变化 {counts.changed}</span>
-        <span>证据缺失 {counts.missing}</span>
+        <span className="diff-missing">证据缺失 {counts.missing}</span>
         <span>新增用例 {counts.added}</span>
         <span>移除用例 {counts.removed}</span>
       </div>
-      {result.incompatibilities?.length ? <div className="compare-block">
+      {result.incompatibilities?.length ? <div className="compare-block incomparable">
         <h5>不可比项（{result.incompatibilities.length}）</h5>
         <div className="compare-items">
           {result.incompatibilities.map(item => <code key={item.dimension}>{item.dimension}</code>)}
@@ -145,7 +145,7 @@ function CompareRow({ run, baselines, onOpen }: { run: Run; baselines: Baseline[
         <div className="compare-downloads">
           <a href={`/api/comparisons/${encodeURIComponent(response.comparison_id)}/report/json`}><ArrowDownToLine size={12}/> 下载 JSON</a>
           <a href={`/api/comparisons/${encodeURIComponent(response.comparison_id)}/report.md`}><ArrowDownToLine size={12}/> 下载 Markdown</a>
-          <button type="button" className="text-button" onClick={() => void toggleMarkdown()}>{mdOpen ? "收起 Markdown" : "预览 Markdown"}</button>
+          <button type="button" className="text-button" aria-expanded={mdOpen} onClick={() => void toggleMarkdown()}>{mdOpen ? "收起 Markdown" : "预览 Markdown"}</button>
         </div>
         {mdError && <p className="error-copy compare-row-error">{mdError}</p>}
         {mdOpen && <pre className="json-box compare-md">{mdLoading ? "正在加载对比报告…" : markdown}</pre>}
@@ -158,7 +158,7 @@ function CompareRow({ run, baselines, onOpen }: { run: Run; baselines: Baseline[
   </div>;
 }
 
-export default function ComparePage({ runs, baselines, onOpen }: { runs: Run[]; baselines: Baseline[]; onOpen: (id: string) => void }) {
+export default function ComparePage({ runs, baselines, onOpen }: { runs: Run[]; baselines: Baseline[]; onOpen: (id: string, trigger?: HTMLElement) => void }) {
   return <>
     <div className="page-heading">
       <div>
