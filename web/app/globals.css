@@ -348,6 +348,12 @@ button:disabled {
   border-color: var(--border-strong);
 }
 
+.icon-button.copied {
+  color: #86efac;
+  background: var(--success-soft);
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
 .primary,
 .button {
   min-height: 44px;
@@ -593,6 +599,7 @@ button:disabled {
 }
 
 .table-wrap {
+  max-height: min(68vh, 680px);
   overflow: auto;
   background: var(--surface);
   border: 1px solid var(--border);

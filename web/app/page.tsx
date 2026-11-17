@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Activity, AlertTriangle, ArrowDownToLine, BadgeCheck, BarChart3, BookOpenCheck, CircleHelp, Clock3, Copy, GitCompareArrows, LayoutDashboard, ListChecks, LoaderCircle, Play, RefreshCw, Search, Server, Settings2, ShieldCheck, X } from "lucide-react";
+import { Activity, AlertTriangle, ArrowDownToLine, BadgeCheck, BarChart3, BookOpenCheck, Check, CircleHelp, Clock3, Copy, GitCompareArrows, LayoutDashboard, ListChecks, LoaderCircle, Play, RefreshCw, Search, Server, Settings2, ShieldCheck, X } from "lucide-react";
 import { API_STATUS_EVENT, api, Baseline, Case, Dashboard, date, Run, statusLabel } from "../lib/api";
 import ComparePage from "./ComparePage";
 
@@ -41,6 +41,7 @@ export default function Home() {
   const [sutCheck, setSutCheck] = useState<any>(null);
   const [notice, setNotice] = useState("");
   const [apiOnline, setApiOnline] = useState(true);
+  const [traceCopied, setTraceCopied] = useState(false);
   const lastFocus = useRef<HTMLElement | null>(null);
   const traceTrigger = useRef<HTMLElement | null>(null);
   const overlayOpen = Boolean(showRun || selectedRun);
@@ -109,6 +110,7 @@ export default function Home() {
     if (!trace) {
       traceTrigger.current?.focus();
       traceTrigger.current = null;
+      setTraceCopied(false);
     }
   }, [trace]);
 
@@ -171,6 +173,33 @@ export default function Home() {
   const checkSut = async () => { setBusy(true); setError(""); try { setSutCheck(await api("/sut/check", { method: "POST" })); } catch (e) { setError(e instanceof Error ? e.message : "SUT 检查失败"); } finally { setBusy(false); } };
   const saveSettings = async () => { setBusy(true); setError(""); try { await api("/settings", { method: "PUT", body: JSON.stringify({ base_url: sutBaseUrl, revision: sutRevision, request_timeout_seconds: Number(sutTimeout), execution_mode: executionMode }) }); setNotice("SUT 设置已保存在本地 SQLite，后续评测会使用新配置。"); await refresh(); } catch (e) { setError(e instanceof Error ? e.message : "设置保存失败"); } finally { setBusy(false); } };
 
+  const copyTrace = async () => {
+    const text = JSON.stringify(trace, null, 2);
+    let copied = false;
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        copied = true;
+      } catch { /* fall through to the textarea fallback */ }
+    }
+    if (!copied) {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      area.select();
+      try { copied = document.execCommand("copy"); } catch { copied = false; }
+      document.body.removeChild(area);
+    }
+    if (!copied) {
+      setError("复制 Trace 失败");
+      return;
+    }
+    setTraceCopied(true);
+    window.setTimeout(() => setTraceCopied(false), 1600);
+  };
+
   return <main className="shell">
     <aside className="sidebar" inert={overlayOpen}><div className="brand"><div className="brand-mark"><ShieldCheck size={21}/></div><div><b>Agent Gate</b><small>行为回归评测</small></div></div>
       <div className="workspace"><span className="live-dot"/>本地工作区 <span className="local-pill">LOCAL</span></div>
@@ -200,7 +229,7 @@ export default function Home() {
       </div>
     </section>
     {showRun && <div className="overlay" onMouseDown={e => { if (e.target === e.currentTarget) setShowRun(false); }}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="new-run-title"><div className="modal-heading"><div><div className="eyebrow">NEW EVALUATION</div><h2 id="new-run-title">启动评测</h2><p>任务在服务端后台执行，可在运行详情中查看进度。</p></div><button autoFocus className="icon-button" aria-label="关闭新建评测" onClick={() => setShowRun(false)}><X size={18} aria-hidden="true"/></button></div><label className="field-label">选择用例 <span className="selected-count">已选 {picked.length} / {cases.length} · 未选择时运行全部</span></label><div className="picker-toolbar"><SearchBox value={runQuery} onChange={setRunQuery} placeholder="搜索用例 ID 或名称"/><div className="picker-actions"><button className="text-button" onClick={() => setPicked(pickerCases.map(c => c.id))}>全选筛选结果</button><button className="text-button" onClick={() => setPicked([])}>清空</button></div></div><div className="filter-row" role="group" aria-label="按风险筛选用例">{riskLevels.map(level => <button key={level} className={`filter-chip ${runRisk === level ? "active" : ""}`} aria-pressed={runRisk === level} onClick={() => setRunRisk(level)}>{level === "all" ? "全部" : level}</button>)}</div><div className="picker-list">{pickerCases.map(c => <label className="picker-item" key={c.id}><input type="checkbox" checked={picked.includes(c.id)} onChange={e => setPicked(prev => e.target.checked ? [...prev, c.id] : prev.filter(id => id !== c.id))}/><span><b>{c.id}</b> {c.name}</span><Risk value={c.risk_level}/></label>)}</div>{pickerCases.length === 0 && <p className="muted">没有匹配的用例。</p>}<label className="field-label" htmlFor="failOn">失败阈值</label><select id="failOn" value={failOn} onChange={e => setFailOn(e.target.value)}><option value="critical">Critical</option><option value="high">High 及以上</option><option value="medium">Medium 及以上</option><option value="low">Low 及以上</option><option value="any">任意失败</option></select><div className="modal-foot"><span><ShieldCheck size={15}/> 相同 Gate 规则用于 CLI / CI</span><button className="primary" disabled={busy || !cases.length} onClick={() => void startRun()}>{busy ? <LoaderCircle className="spin" size={15}/> : <Play size={14} fill="currentColor"/>} 开始运行</button></div></section></div>}
-    {selectedRun && <div className="overlay" onMouseDown={e => { if (e.target === e.currentTarget) { setSelectedRun(null); setTrace(null); } }}><section className="detail-drawer" role="dialog" aria-modal="true" aria-labelledby="run-detail-title"><div className="drawer-heading"><div><div className="eyebrow">RUN EVIDENCE</div><h2 id="run-detail-title">运行详情</h2><code>{selectedRun}</code></div><button autoFocus className="icon-button" aria-label="关闭运行详情" onClick={() => { setSelectedRun(null); setTrace(null); }}><X size={18} aria-hidden="true"/></button></div>{!runDetail ? <div className="loading"><LoaderCircle className="spin"/> 正在加载运行详情…</div> : <><div className="drawer-status"><Status value={runDetail.run.status}/><span>创建于 {date(runDetail.run.created_at)}</span>{runDetail.run.completed_at && <span>结束于 {date(runDetail.run.completed_at)}</span>}</div>{runDetail.report ? <><div className="detail-kpis"><div><small>通过用例</small><b>{runDetail.report.summary?.passed ?? 0}/{runDetail.report.summary?.case_count ?? 0}</b></div><div><small>Critical 失败</small><b>{runDetail.report.gate?.critical_failures ?? 0}</b></div><div><small>阻断断言</small><b>{runDetail.report.gate?.blocking_assertions ?? 0}</b></div></div><div className="drawer-actions"><a className="button secondary small" href={`/api/runs/${encodeURIComponent(selectedRun)}/report/json`}><ArrowDownToLine size={14}/> JSON</a><a className="button secondary small" href={`/api/runs/${encodeURIComponent(selectedRun)}/report/md`}><ArrowDownToLine size={14}/> Markdown</a></div><h3 className="drawer-section-title">用例结果</h3><div className="result-list">{runDetail.report.cases?.map((c: any) => <article className="result-card" key={c.case_id}><div className="result-head"><div><b>{c.case_id}</b><span>{c.name}</span></div><Status value={c.status}/></div>{c.error_message && <p className="error-copy">{c.error_category}: {c.error_message}</p>}<div className="assertions">{c.assertions?.map((a: any) => <div key={a.assertion_id} className={`assertion ${a.passed ? "assert-pass" : "assert-fail"}`}><i aria-hidden="true"/><b className="assertion-state">{a.passed ? "通过" : "失败"}</b>{a.assertion_id} · {a.severity}<span>{a.message}</span></div>)}</div>{c.trace_path ? <button className="text-button" onClick={async (event) => { traceTrigger.current = event.currentTarget; try { setTrace(await api(`/runs/${encodeURIComponent(selectedRun)}/traces/${encodeURIComponent(c.case_id)}`)); } catch (e) { setError(e instanceof Error ? e.message : "无法读取 Trace"); } }}>查看完整 Trace →</button> : <small className="muted">无可用 Trace{c.status === "incomplete" ? " · 本次采集不完整" : ""}</small>}</article>)}</div><BaselineForm key={selectedRun} runId={selectedRun} onSaved={async () => { setNotice("基线已保存，历史基线不会被覆盖。"); await refresh(); }}/></> : <div className="loading"><LoaderCircle className="spin"/> 评测运行中，自动刷新状态…</div>}</>}{trace && <div className="trace-modal" role="dialog" aria-modal="true" aria-label="Trace 查看器"><div className="trace-head"><b>Trace · {trace.trace?.case_id || trace.case_id || "unknown"}</b><div className="trace-head-actions"><button className="icon-button" aria-label="复制 Trace JSON" title="复制 JSON" onClick={() => void navigator.clipboard?.writeText(JSON.stringify(trace, null, 2))}><Copy size={15} aria-hidden="true"/></button><button autoFocus className="icon-button" aria-label="关闭 Trace 查看器" onClick={() => setTrace(null)}><X size={16} aria-hidden="true"/></button></div></div><pre tabIndex={0}>{JSON.stringify(trace, null, 2)}</pre></div>}</section></div>}
+    {selectedRun && <div className="overlay" onMouseDown={e => { if (e.target === e.currentTarget) { setSelectedRun(null); setTrace(null); } }}><section className="detail-drawer" role="dialog" aria-modal="true" aria-labelledby="run-detail-title"><div className="drawer-heading"><div><div className="eyebrow">RUN EVIDENCE</div><h2 id="run-detail-title">运行详情</h2><code>{selectedRun}</code></div><button autoFocus className="icon-button" aria-label="关闭运行详情" onClick={() => { setSelectedRun(null); setTrace(null); }}><X size={18} aria-hidden="true"/></button></div>{!runDetail ? <div className="loading"><LoaderCircle className="spin"/> 正在加载运行详情…</div> : <><div className="drawer-status"><Status value={runDetail.run.status}/><span>创建于 {date(runDetail.run.created_at)}</span>{runDetail.run.completed_at && <span>结束于 {date(runDetail.run.completed_at)}</span>}</div>{runDetail.report ? <><div className="detail-kpis"><div><small>通过用例</small><b>{runDetail.report.summary?.passed ?? 0}/{runDetail.report.summary?.case_count ?? 0}</b></div><div><small>Critical 失败</small><b>{runDetail.report.gate?.critical_failures ?? 0}</b></div><div><small>阻断断言</small><b>{runDetail.report.gate?.blocking_assertions ?? 0}</b></div></div><div className="drawer-actions"><a className="button secondary small" href={`/api/runs/${encodeURIComponent(selectedRun)}/report/json`}><ArrowDownToLine size={14}/> JSON</a><a className="button secondary small" href={`/api/runs/${encodeURIComponent(selectedRun)}/report/md`}><ArrowDownToLine size={14}/> Markdown</a></div><h3 className="drawer-section-title">用例结果</h3><div className="result-list">{runDetail.report.cases?.map((c: any) => <article className="result-card" key={c.case_id}><div className="result-head"><div><b>{c.case_id}</b><span>{c.name}</span></div><Status value={c.status}/></div>{c.error_message && <p className="error-copy">{c.error_category}: {c.error_message}</p>}<div className="assertions">{c.assertions?.map((a: any) => <div key={a.assertion_id} className={`assertion ${a.passed ? "assert-pass" : "assert-fail"}`}><i aria-hidden="true"/><b className="assertion-state">{a.passed ? "通过" : "失败"}</b>{a.assertion_id} · {a.severity}<span>{a.message}</span></div>)}</div>{c.trace_path ? <button className="text-button" onClick={async (event) => { traceTrigger.current = event.currentTarget; try { setTrace(await api(`/runs/${encodeURIComponent(selectedRun)}/traces/${encodeURIComponent(c.case_id)}`)); } catch (e) { setError(e instanceof Error ? e.message : "无法读取 Trace"); } }}>查看完整 Trace →</button> : <small className="muted">无可用 Trace{c.status === "incomplete" ? " · 本次采集不完整" : ""}</small>}</article>)}</div><BaselineForm key={selectedRun} runId={selectedRun} onSaved={async () => { setNotice("基线已保存，历史基线不会被覆盖。"); await refresh(); }}/></> : <div className="loading"><LoaderCircle className="spin"/> 评测运行中，自动刷新状态…</div>}</>}{trace && <div className="trace-modal" role="dialog" aria-modal="true" aria-label="Trace 查看器"><div className="trace-head"><b>Trace · {trace.trace?.case_id || trace.case_id || "unknown"}</b><div className="trace-head-actions"><button className={`icon-button ${traceCopied ? "copied" : ""}`} aria-label={traceCopied ? "Trace JSON 已复制" : "复制 Trace JSON"} title={traceCopied ? "已复制" : "复制 JSON"} onClick={() => void copyTrace()}>{traceCopied ? <Check size={15} aria-hidden="true"/> : <Copy size={15} aria-hidden="true"/>}</button><span className="sr-only" role="status" aria-live="polite">{traceCopied ? "Trace JSON 已复制" : ""}</span><button autoFocus className="icon-button" aria-label="关闭 Trace 查看器" onClick={() => setTrace(null)}><X size={16} aria-hidden="true"/></button></div></div><pre tabIndex={0}>{JSON.stringify(trace, null, 2)}</pre></div>}</section></div>}
   </main>;
 }
 
