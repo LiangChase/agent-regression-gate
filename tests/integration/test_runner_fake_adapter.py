@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import io
+import json
+import logging
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -9,6 +13,7 @@ from agent_regression_gate.cases.models import Case, Rule
 from agent_regression_gate.config import GateConfig, ModelConfig, RunConfig, SutConfig, TraceConfig
 from agent_regression_gate.errors import ProtocolError, SutUnavailableError
 from agent_regression_gate.execution.runner import run_suite
+from agent_regression_gate.logging_config import JsonFormatter
 from agent_regression_gate.sut.models import (
     HealthStatus,
     ObservedEvent,
@@ -166,6 +171,30 @@ def run(cfg, cases, adapter, lifecycle, tmp_path):
     )
 
 
+@contextmanager
+def capture_json_logs():
+    stream = io.StringIO()
+    logger = logging.getLogger("agent_regression_gate")
+    previous_handlers = logger.handlers[:]
+    previous_level = logger.level
+    previous_propagate = logger.propagate
+    handler = logging.StreamHandler(stream)
+    handler.setFormatter(JsonFormatter())
+    logger.handlers = [handler]
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+    try:
+        yield stream
+    finally:
+        logger.handlers = previous_handlers
+        logger.setLevel(previous_level)
+        logger.propagate = previous_propagate
+
+
+def json_logs(stream: io.StringIO) -> list[dict]:
+    return [json.loads(line) for line in stream.getvalue().splitlines() if line.strip()]
+
+
 def test_fake_adapter_runs_cases_serially_with_fresh_threads(tmp_path, monkeypatch):
     monkeypatch.setenv("GATE_SUT_REVISION", "rev-fake")
     monkeypatch.setenv("DEEPSEEK_MODEL", "deepseek-flash")
@@ -267,3 +296,71 @@ def test_assertion_failure_sets_gate_exit_one(tmp_path, monkeypatch):
     assert report["cases"][0]["status"] == "fail"
     assert report["gate"]["critical_failures"] == 1
     assert report["gate"]["exit_code"] == 1
+
+
+def test_run_logs_run_and_case_lifecycle_with_context_ids(tmp_path, monkeypatch):
+    monkeypatch.setenv("GATE_SUT_REVISION", "rev-fake")
+    rule = Rule(id="R1", type="tool_never_called", severity="critical", params={"tool": "cancel_flight"})
+    cases = [
+        case("CASE-A", rule=rule),
+        case("CASE-B", rule=rule, turns=["hello again"]),
+    ]
+    adapter = FakeAdapter([[turn_script()], [turn_script()]])
+    lifecycle = FakeLifecycle()
+
+    with capture_json_logs() as stream:
+        report, _, _ = run(config(tmp_path), cases, adapter, lifecycle, tmp_path)
+
+    logs = json_logs(stream)
+    events = [entry["event"] for entry in logs]
+    assert events == [
+        "run_started",
+        "case_started",
+        "case_finished",
+        "case_started",
+        "case_finished",
+        "run_finished",
+    ]
+
+    run_started = logs[0]
+    assert run_started["run_id"] == report["run_id"]
+    assert run_started["case_id"] is None
+    assert run_started["case_count"] == 2
+
+    starts = [entry for entry in logs if entry["event"] == "case_started"]
+    assert [entry["case_id"] for entry in starts] == ["CASE-A", "CASE-B"]
+    assert all(entry["run_id"] == report["run_id"] for entry in starts)
+
+    finishes = [entry for entry in logs if entry["event"] == "case_finished"]
+    assert [entry["status"] for entry in finishes] == ["pass", "pass"]
+    assert all(isinstance(entry["duration_ms"], (int, float)) for entry in finishes)
+
+    run_finished = logs[-1]
+    assert run_finished["event"] == "run_finished"
+    assert run_finished["run_id"] == report["run_id"]
+    assert run_finished["case_id"] is None
+    assert run_finished["status"] == "pass"
+    assert run_finished["case_count"] == 2
+
+    assert all("hello" not in json.dumps(entry, ensure_ascii=False) for entry in logs)
+
+
+def test_case_error_logs_error_category_and_resets_case_context(tmp_path, monkeypatch):
+    monkeypatch.setenv("GATE_SUT_REVISION", "rev-fake")
+    rule = Rule(id="R1", type="tool_must_be_called", severity="critical", params={"tool": "flight_status_tool"})
+    adapter = FakeAdapter([[turn_script(error=ProtocolError("boom"))]])
+    lifecycle = FakeLifecycle()
+
+    with capture_json_logs() as stream:
+        report, _, _ = run(config(tmp_path), [case("CASE-ERR", rule=rule)], adapter, lifecycle, tmp_path)
+
+    logs = json_logs(stream)
+    finished = next(entry for entry in logs if entry["event"] == "case_finished")
+    assert finished["run_id"] == report["run_id"]
+    assert finished["case_id"] == "CASE-ERR"
+    assert finished["status"] == "error"
+    assert finished["error_category"] == "protocol_error"
+
+    run_finished = next(entry for entry in logs if entry["event"] == "run_finished")
+    assert run_finished["status"] == "fail"
+    assert run_finished["case_id"] is None
