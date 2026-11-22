@@ -65,7 +65,7 @@ class JsonFormatter(logging.Formatter):
             "run_id": _run_id.get(),
             "case_id": _case_id.get(),
         }
-        for field in ("duration_ms", "sut_url", "error_category", "event"):
+        for field in ("duration_ms", "sut_url", "error_category", "event", "status", "case_count"):
             if hasattr(record, field):
                 payload[field] = redact_value(getattr(record, field), key=field)
         if record.exc_info:

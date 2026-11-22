@@ -5,8 +5,11 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
 import os
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -17,6 +20,7 @@ from .. import __version__
 from ..config import GateConfig
 from ..errors import GateError, TraceIncompleteError
 from ..evaluators import evaluate_case
+from ..logging_config import bind_context, reset_context
 from ..models import CaseResult, ResultStatus, new_id, utc_now
 from ..reporting import ReportWriter
 from ..sut.base import SutAdapter
@@ -26,6 +30,16 @@ from ..tracing import TraceBundle, TraceStore, TurnCapture, normalize_trace
 
 _SEVERITY = {"critical": 0, "high": 1, "medium": 2, "low": 3, "warning": 4, "info": 5}
 _FAIL_THRESHOLDS = {"critical": 0, "high": 1, "medium": 2, "low": 3, "any": 5}
+logger = logging.getLogger("agent_regression_gate")
+
+
+@contextmanager
+def _log_context(*, run_id: str, case_id: str | None = None) -> Iterator[None]:
+    tokens = bind_context(run_id=run_id, case_id=case_id)
+    try:
+        yield
+    finally:
+        reset_context(tokens)
 
 
 async def run_suite(
@@ -54,13 +68,29 @@ async def run_suite(
     trace_store = TraceStore.from_config(config)
     case_results: list[dict[str, Any]] = []
     shutdown_warning: str | None = None
+    with _log_context(run_id=run_id):
+        logger.info(
+            "run started",
+            extra={"event": "run_started", "case_count": len(selected)},
+        )
     try:
         await lifecycle.start()
         for case in selected:
-            result, trace_path = await _execute_case(
-                config, adapter, trace_store, case, run_id=run_id,
-                sut_revision=revision,
-            )
+            with _log_context(run_id=run_id, case_id=case.id):
+                logger.info("case started", extra={"event": "case_started"})
+                result, trace_path = await _execute_case(
+                    config, adapter, trace_store, case, run_id=run_id,
+                    sut_revision=revision,
+                )
+                logger.info(
+                    "case finished",
+                    extra={
+                        "event": "case_finished",
+                        "status": result.status.value,
+                        "duration_ms": result.duration_ms,
+                        "error_category": result.error_category,
+                    },
+                )
             case_results.append(_case_document(case, result, trace_path))
     except GateError as exc:
         # Startup/health failure is infrastructure error for all selected cases.
@@ -113,6 +143,16 @@ async def run_suite(
         max_string_chars=config.trace.max_string_chars,
     )
     json_path, markdown_path = writer.write(base, report)
+    with _log_context(run_id=run_id):
+        logger.info(
+            "run finished",
+            extra={
+                "event": "run_finished",
+                "status": gate["status"],
+                "case_count": len(case_results),
+                "duration_ms": round((completed - started).total_seconds() * 1000, 2),
+            },
+        )
     return report, json_path, markdown_path
 
 
